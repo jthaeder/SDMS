@@ -161,18 +161,36 @@ class hpssUtil:
 
         cmdLine = 'htar -tf {0}'.format(hpssDoc['fileFullName'])
         cmd = shlex.split(cmdLine)
-        print(cmd)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         for lineTerminated in iter(p.stdout.readline, b''):
             line = lineTerminated.decode("utf-8").rstrip('\t\n')
             lineCleaned = ' '.join(line.split())
-            print (lineCleaned)
-    
+            
+            if lineCleaned == "HTAR: HTAR SUCCESSFUL":
+                continue
+            
+            # -- pick only root files 
+            if not lineCleaned.startswith('HTAR: d'):  
+                lineTokenized = lineCleaned.split(' ', 7)
+
+                fileName     = lineTokenized[6]
+                fileSize     = lineTokenized[3]
+            
+                if not fileName.endswith('.root'):
+                    print(lineTokenized)
+                    continue
+
+                if fileName.endswith(".picoDst.root"):
+                    fileType = "picoDst"
 
 
+                doc = { "fileNamePicoDst": fileName, "fileSize": fileSize, "fileType": fileType, "isInTarFile": True, "fileNameTarFile": hpssDoc['fileFullName']}
+                
+                print(doc)
 
 
+                        
     # _________________________________________________________
     def _makePicoDstDoc(self, hpssDoc): 
         """Create entry for picoDsts """
