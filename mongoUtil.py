@@ -23,6 +23,8 @@ MONGO_DB_NAME = 'STAR_XROOTD'
 ADMIN_USER    = 'STAR_XROOTD_admin'
 READONLY_USER = 'STAR_XROOTD_ro'
 
+COLLECTION_INDICES = {'HPSS_Files': 'fileFullPath', 'HPSS_PicoDsts': 'filePath'}
+
 ##############################################
 
 # -- Check for a proper Python Version
@@ -36,7 +38,7 @@ if pymongo.__version__[0:3] < '3.0':
 
 # ----------------------------------------------------------------------------------
 class mongoDbUtil:
-    """class to connect to mongoDB and perform actions"""
+    """Class to connect to mongoDB and perform actions."""
 
     # _________________________________________________________
     def __init__(self, args, userSwitch = 'user'):
@@ -61,36 +63,50 @@ class mongoDbUtil:
 
     # _________________________________________________________
     def _connectDB(self):
-        """Connect to the NERSC mongoDB using pymongo"""
+        """Connect to the NERSC mongoDB using pymongo."""
 
         self.client = MongoClient('mongodb://{0}:{1}@{2}/{3}'.format(self.user, self.password, 
                                                                      MONGO_SERVER, MONGO_DB_NAME))
         self.db = self.client[MONGO_DB_NAME]
-        print (self.db.collection_names(include_system_collections=False))
+        print ("Existing collections:", self.db.collection_names(include_system_collections = False))
 
     # _________________________________________________________
     def close(self):
-        """Close conenction to the NERSC mongoDB using pymongo"""
+        """Close conenction to the NERSC mongoDB using pymongo."""
 
         self.client.close()
         self.db = ""
 
     # _________________________________________________________
     def getCollection(self, collectionName = 'HPSS_Files'):
-        """"Connenct to the NERSC mongoDB using pymongo"""
+        """Get collection and set index."""
 
         collection = self.db[collectionName]
-        if collectionName == 'HPSS_Files':
-            collection.create_index('fileFullPath')
-
+        try:
+            collection.create_index(COLLECTION_INDICES[collectionName], unique=True)
+        except KeyError:
+            print ("Warning: Collection", collectionName, "not known. Index not created.")
+            
         return collection
+
+  # _________________________________________________________
+    def dropCollection(self, collectionName):
+        """Drop collection."""
+
+        self.db[collectionName].drop()
+
+# ----------------------------------------------------------------------------------
 
 # ____________________________________________________________________________
 def main():
-    """initialize and run"""
+    """Initialize and run,"""
+
     print("mongoDbUtil main")
 
-# ____________________________________________________________________________
+
+# ----------------------------------------------------------------------------------
+
 if __name__ == "__main__":
-    """call main"""
+    """Call main."""
+    
     sys.exit(main())
