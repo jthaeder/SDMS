@@ -2,11 +2,56 @@
 b'This script requires python 3.4'
 
 """
-Do blab 
+Crawler which runs over all HPSS picoDST folder for now and populates
+mongoDB collections.
+
+HPSSFiles: Is a collection of all files within those folders
+-> This is the true represetation on what is on tape.
+Every time the crawler runs, it updates the lastSeen field 
+
+unique index is: fileFullPath
+
+fileType can be: tar, idx, picoDst, other
+
+This is a typical document: 
+{'_id': ObjectId('5723e67af157a6a310232458'), 
+ 'fileSize': '13538711552', 
+ 'fileType': 'tar', 
+ 'fileFullPath': '/nersc/projects/starofl/picodsts/Run10/AuAu/11GeV/all/P10ih/148.tar', 
+  'lastSeen': '2016-04-29'}
+
+
+HPSSPicoDsts: Is a collection of all picoDsts stored on HPSS,
+-> Every picoDst should show up only once. Duplicate entries are caught seperatly (see below)
+
+unique index is: filePath
+
+This is a typical document: 
+{'_id': 'Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root', 
+ 'filePath': 'Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root', 
+ 'fileSize': '5103599', 
+ 'fileFullPath': '/project/projectdirs/starprod/picodsts/Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root', 
+ 'dataClass': 'picoDst', 
+ 'isInTarFile': True,
+ 'fileFullPathTar': '/nersc/projects/starofl/picodsts/Run10/AuAu/11GeV/all/P10ih/149.tar', 
+ 'starDetails': {'runyear': 'Run10', 
+                 'system': 'AuAu', 
+                 'energy': '11GeV', 
+                 'trigger': 'all', 
+                 'production': 'P10ih', 
+                 'day': 149, 
+                 'runnumber': 11149081, 
+                 'stream': 'st_physics_adc',
+                 'picoType': 'raw'}, 
+ 'staging': {'stageMarkerXRD': False}} 
+
+HPSSDuplicates: Collection of duplicted picoDsts on HPSS
 
 """
 
-import sys, os, re
+import sys
+import os
+import re
 
 import logging as log
 import time
@@ -81,7 +126,6 @@ class hpssUtil:
         for subFolder in iter(p.stdout.readline, b''):            
             print("SubFolder: ", subFolder.decode("utf-8").rstrip())
             self._parseSubFolder(subFolder.decode("utf-8").rstrip())
-
             
     # _________________________________________________________
     def _parseSubFolder(self, subFolder): 
@@ -114,11 +158,11 @@ class hpssUtil:
                                                                       {'$set': {'lastSeen': self._today}, '$setOnInsert' : doc}, 
                                                                       upsert = True)
                         
-                        # -- record already there do nothing
+                        # -- document already there do nothing
                         if ret:
                             continue
 
-                        # -- new record inserted - add the picoDst(s)
+                        # -- new document inserted -add the picoDst(s)
                         if doc['fileType'] == "picoDst":
                             listPicoDsts.append(self._makePicoDstDoc(doc['fileFullPath'], doc['fileSize'])) 
                         elif doc['fileType'] == "tar":
@@ -275,21 +319,10 @@ def main():
     # -- Connect to mongoDB
     dbUtil = mongoDbUtil("", "admin")
 
-#    dbUtil.dropCollection("HPSS_Files")
-#    dbUtil.dropCollection("HPSS_PicoDsts")
-#    dbUtil.dropCollection("HPSS_Duplicates")
-
     collHpssFiles      = dbUtil.getCollection("HPSS_Files")
     collHpssPicoDsts   = dbUtil.getCollection("HPSS_PicoDsts")
     collHpssDuplicates = dbUtil.getCollection("HPSS_Duplicates")
 
-    print(">>>", collHpssFiles)
-    print("    Number of documents:", collHpssFiles.count())
-    print(">>>", collHpssPicoDsts)
-    print("    Number of documents:", collHpssPicoDsts.count())
-    print(">>>", collHpssDuplicates)
-    print("    Number of documents:", collHpssDuplicates.count())
-   
     hpss = hpssUtil()
     hpss.setCollections(collHpssFiles, collHpssPicoDsts, collHpssDuplicates)
     hpss.getFileList()
