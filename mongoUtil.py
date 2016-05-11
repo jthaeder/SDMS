@@ -83,7 +83,7 @@ class mongoDbUtil:
 
         collection = self.db[collectionName]
         try:
-            collection.create_index(COLLECTION_INDICES[collectionName], unique=True)
+            collection.create_index([(COLLECTION_INDICES[collectionName], pymongo.ASCENDING)], unique=True)
         except KeyError:
             print ("Warning: Collection", collectionName, "not known. Index not created.")
             
