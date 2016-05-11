@@ -63,6 +63,10 @@ from mongoUtil import mongoDbUtil
 import pymongo
 
 from pymongo import results
+from pymongo import errors
+from pymongo import bulk
+
+from pprint import pprint
 
 ##############################################
 # -- GLOBAL CONSTANTS
@@ -82,7 +86,8 @@ class hpssUtil:
     """Helper Class for HPSS connections and retrieving stuff"""
 
     # _________________________________________________________
-    def __init__(self, dataClass = 'picoDst', pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber%d'):
+    def __init__(self, dataClass = 'picoDst', pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber'):
+        #    def __init__(self, dataClass = 'picoDst', pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber%d'):
         self._today = datetime.datetime.today().strftime('%Y-%m-%d')
 
         self._dataClass        = dataClass
@@ -99,6 +104,52 @@ class hpssUtil:
             self._typeMap = {'s': str, 'd': int, 'f': float}
 
     # _________________________________________________________
+    def _getTypedPathKeys(self, tokenizedPath):
+        """Get typed path keys for different scenarios."""
+
+        # -- Default case
+        if len(tokenizedPath) == 8:
+            return self._typedPathKeys
+
+        elif len(tokenizedPath) == 7:
+            pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber'
+
+            # _________________________________________________________
+            def _getDateIndex(tokenizedPath):
+                """Get index of date field."""
+
+                for idx in range(len(tokenizedPath)):
+                    isDate = True
+                    try: 
+                        date = int(tokenizedPath[idx])
+                        if date > 370:
+                            isDate = False
+                    except ValueError:
+                        isDate = False
+                        
+                    if isDate:
+                        return idx
+                return -1
+                    
+            dateIdx = _getDateIndex(tokenizedPath)
+            
+            if dateIdx == 4 and "GeV" in tokenizedPath[2]:
+                # ORIG: pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber'
+                pathKeysSchema = 'runyear/system/energy/trigger/day%d/runnumber'
+
+                pathKeys = pathKeysSchema.split(os.path.sep)
+                typedPathKeys = [k.split('%') if '%' in k else [k, 's'] for k in pathKeys]
+                return typedPathKeys
+
+            else:
+                print("SCHEMA NOT KNOWN !!! - use Default", tokenizedPath)
+                return self._typedPathKeys
+
+        else:
+            print("SCHEMA NOT KNOWN !!! - use Default", tokenizedPath)
+            return self._typedPathKeys
+
+    # _________________________________________________________
     def setCollections(self, collHpssFiles, collHpssPicoDsts, collHpssDuplicates):
         """Get collection from mongoDB."""
         
@@ -112,6 +163,7 @@ class hpssUtil:
 
         for picoFolder in PICO_FOLDERS:
             self._getFolderContent(picoFolder)
+            break
 
     # _________________________________________________________
     def _getFolderContent(self, picoFolder):
@@ -123,7 +175,8 @@ class hpssUtil:
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
  
         # -- Loop of the list of subfolders
-        for subFolder in iter(p.stdout.readline, b''):            
+        for subFolder in iter(p.stdout.readline, b''):
+#            if "Run10.bak" in subFolder.decode("utf-8").rstrip():
             print("SubFolder: ", subFolder.decode("utf-8").rstrip())
             self._parseSubFolder(subFolder.decode("utf-8").rstrip())
             
@@ -162,11 +215,15 @@ class hpssUtil:
                         if ret:
                             continue
 
-                        # -- new document inserted -add the picoDst(s)
+                        # -- new document inserted - add the picoDst(s)
                         if doc['fileType'] == "picoDst":
                             listPicoDsts.append(self._makePicoDstDoc(doc['fileFullPath'], doc['fileSize'])) 
                         elif doc['fileType'] == "tar":
-                            listPicoDsts += self._parseTarFile(doc)
+                            self._parseTarFile(doc)
+
+                        if len(listPicoDsts) >= 10000:
+                            self._insertPicoDsts(listPicoDsts)
+                            listPicoDsts[:] = []
 
         # -- Insert picoDsts in collection
         self._insertPicoDsts(listPicoDsts)
@@ -217,6 +274,11 @@ class hpssUtil:
                 continue
             
             lineTokenized = lineCleaned.split(' ', 7)
+
+            if len(lineTokenized) < 7:
+                print("Error tokenizing hTar line:", lineTokenized) 
+                continue
+
             fileFullPath  = lineTokenized[6]
             fileSize      = lineTokenized[3]
 
@@ -226,9 +288,9 @@ class hpssUtil:
   
             # -- make PicoDst document and add it to list
             listDocs.append(self._makePicoDstDoc(fileFullPath, fileSize, hpssDoc=hpssDoc, isInTarFile=True))
-            
-        # --return list of picoDsts
-        return listDocs
+ 
+        # -- Insert picoDsts in collection
+        self._insertPicoDsts(listDocs)
 
     # _________________________________________________________
     def _makePicoDstDoc(self, fileFullPath, fileSize, hpssDoc=None, isInTarFile=False): 
@@ -238,13 +300,14 @@ class hpssUtil:
         idxBasePath = fileFullPath.find("/Run")+1
 
         # -- Create document
-        doc = {'_id':          fileFullPath[idxBasePath:],
+        doc = {
                'filePath':     fileFullPath[idxBasePath:],
                'fileFullPath': fileFullPath, 
                'fileSize':     fileSize,
                'dataClass':    self._dataClass,
                'isInTarFile':  isInTarFile,
-               'staging':      { 'stageMarkerXRD': False}
+               'staging':      { 'stageMarkerXRD': False},
+               'isInRunBak':   False
             }            
 
         if isInTarFile:
@@ -253,9 +316,20 @@ class hpssUtil:
         # -- Strip basePath of fileName and tokenize it 
         cleanPathTokenized = doc['filePath'].split(os.path.sep)
 
+        # -- Get TypedKeys for tokenized path 
+        typedPathKeys = self._getTypedPathKeys(cleanPathTokenized)
+
         # -- Create STAR details sub document
         docStarDetails = dict([(keys[0], self._typeMap[keys[1]](value)) 
-                               for keys, value in zip(self._typedPathKeys, cleanPathTokenized)])
+                               for keys, value in zip(typedPathKeys, cleanPathTokenized)])
+
+        # -- remove ".bak" from runyear and _id / fileType (for the uniqueness of the picoDst)
+        if '.' in docStarDetails['runyear']:
+            splitRunYear = docStarDetails['runyear'].split('.')
+            docStarDetails['runyear'] = splitRunYear[0]
+            bakString = ".{0}".format(splitRunYear[1])
+            doc['filePath'] = doc['filePath'].replace(bakString, '')
+            doc['isInRunBak'] = True
 
         # -- Create a regex pattern to get the stream from the fileName
         regexStream = re.compile('(st_.*)_{}'.format(docStarDetails.get('runnumber', '')))
@@ -270,6 +344,11 @@ class hpssUtil:
             docStarDetails['picoType'] = strippedSuffixParts[0] \
                 if len(strippedSuffixParts) == 2 \
                 else strippedSuffix
+        else:
+            print('xxx: ', fileNameParts, docStarDetails)
+            docStarDetails['stream'] = 'xx'
+            docStarDetails['picoType'] = 'xx'
+            
 
         # -- Add STAR details to document
         doc['starDetails'] = docStarDetails
@@ -292,25 +371,24 @@ class hpssUtil:
 
         print("Insert List: Try to add {0} picoDsts".format(len(listDocs)))
 
-        # -- Insert list of picoDsts in to HpssPicoDsts collection
-        ret = self._collHpssPicoDsts.insert_many(listDocs, ordered=False)
-        
-        # -- remove insertedIds from list of documents
-        #    -> only duplicate are left
-        for insertedId in ret.inserted_ids:
-            element = next((item for item in listDocs if item['_id'] == insertedId), None)
+        # -- Clean listDocs with duplicate entries and move them on extra list: listDuplicates
+        listDuplicates = []
+
+        for entry in self._collHpssPicoDsts.find({'starDetails.runyear': listDocs[0]['starDetails']['runyear']}, {'filePath': True, '_id': False}):
+            element = next((item for item in listDocs if item['filePath'] == entry['filePath']), None)
             if element:
+                listDuplicates.append(element)
                 listDocs.remove(element)
 
-        # -- remove uniqueId '_id' in list of duplicates 
-        for entry in listDocs:
-            entry.pop('_id', None)
-                    
-        # -- Insert list of duplicate picoDsts in to HpssDuplicates collection
+        # -- Insert list of picoDsts in to HpssPicoDsts collection
         if listDocs:
-            print("Insert List: Found {0} duplicate picoDsts".format(len(listDocs)))
-            self._collHpssDuplicates.insert_many(listDocs, ordered=False)
+            print("Insert List: Add {0} picoDsts".format(len(listDocs)))
+            self._collHpssPicoDsts.insert_many(listDocs, ordered=False)
 
+        # -- Insert list of duplicate picoDsts in to HpssDuplicates collection
+        if listDuplicates:
+            print("Insert List: Add {0} duplicate picoDsts".format(len(listDuplicates)))
+            self._collHpssDuplicates.insert_many(listDuplicates, ordered=False)
 
 # ____________________________________________________________________________
 def main():
@@ -318,6 +396,10 @@ def main():
 
     # -- Connect to mongoDB
     dbUtil = mongoDbUtil("", "admin")
+
+    dbUtil.dropCollection("HPSS_Files")
+    dbUtil.dropCollection("HPSS_PicoDsts")
+    dbUtil.dropCollection("HPSS_Duplicates")
 
     collHpssFiles      = dbUtil.getCollection("HPSS_Files")
     collHpssPicoDsts   = dbUtil.getCollection("HPSS_PicoDsts")
