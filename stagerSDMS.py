@@ -9,10 +9,15 @@ The staging file can have several sets,
 each set can have the following parameters
 
  'target'   : 'XRD'           (For now the only option)
+    as in listOfTargets = ['XRD']
+
  'dataClass': 'picoDst'       (For now the only option)
+    as in  listOfDataClasses = ['picoDst']
+
+ Data set parameters:
+    as in listOfQueryItems = ['runyear', 'system', 'energy', 'trigger', 'production', 'day', 'runnumber', 'stream']
 
  with example values:
-
  'runyear': 'Run10', 
  'system': 'AuAu', 
  'energy': '11GeV', 
@@ -61,17 +66,12 @@ class stagerSDMS:
     # _________________________________________________________
     def __init__(self, stageingFile):
         self._stageingFile = stageingFile
-        self._listOfTargets = {'XRD'}
-        self._listOfDataClasses = {'picoDst'}
-        self._listOfQueryItem = {'runyear', 'system', 'energy', 'trigger', 'production', 'day', 'runnumber', 'stream'}
+        self._listOfTargets = ['XRD']
+        self._listOfDataClasses = ['picoDst']
+        self._listOfQueryItems = ['runyear', 'system', 'energy', 'trigger', 'production', 'day', 'runnumber', 'stream']
+        self._collections = dict.fromkeys(self._listOfDataClasses)
 
         self._readStagingFile()
-
-    # _________________________________________________________
-    def setCollections(self, collHpssPicoDsts):
-        """Get collection from mongoDB."""
-        
-        self._collHpssPicoDsts = collHpssPicoDsts
 
     # _________________________________________________________
     def _readStagingFile(self):
@@ -87,14 +87,25 @@ class stagerSDMS:
                 sys.exit(-1)
 
     # _________________________________________________________
+    def addCollection(self, dataClass, collection)
+        """Get collection from mongoDB."""
+
+        if dataClass not in  self._listOfDataClasses:
+            print('Error reading staging file: Unknown "dataClass"', self._dataClass, 'for adding collection')
+            return False
+
+        self._collections[dataClass] = collection
+
+
+    # _________________________________________________________
     def _resetAllStagingMarks(self):
         """Reset all staging marks.
         
-           Add a line for every collection / target 
+           Add a line for every collection
            """
-        print("reset all")
-        #self._collHpssPicoDsts.UpdateMany({}, {'$set': {'staging.stageMarkerXRD': False}})
-
+        for target in self._listOfTargets:
+            targetField = 'staging.stageMarker{0}'.format(target)
+            self._collHpssPicoDsts.UpdateMany({}, {'$set': {targetField: False}})
 
     # _________________________________________________________
     def markFilesToBeStaged(self):
@@ -106,9 +117,7 @@ class stagerSDMS:
             if not self._prepareSet(stageSet):
                 continue
 
-            print( self._targetField )
-
-           # self._collHpssPicoDsts.UpdateMany(stageSet, {'$set': {'staging.stageMarkerXRD': True}})
+            self._collHpssPicoDsts.UpdateMany(stageSet, {'$set': {self._targetField: True}})
 
     # _________________________________________________________
     def listOfFilesToBeStaged(self):
@@ -127,8 +136,7 @@ class stagerSDMS:
             if self._target not in  self._listOfTargets:
                 print('Error reading staging file: Unknown "target"', self._target)
                 return False
-            if self._target == 'picoDsts':
-                self._coll = self._collHpssPicoDsts 
+            self._targetField = "staging.stageMarker{0}".format(self._target)
 
         except:
             print('Error reading staging file: no "target" found in set' , stageSet)
@@ -141,7 +149,7 @@ class stagerSDMS:
             if self._dataClass not in  self._listOfDataClasses:
                 print('Error reading staging file: Unknown "dataClass"', self._dataClass)
                 return False
-            self._targetField = "staging.stageMarker{0}".format(self._dataClass)
+            self._coll = self._collections[self._dataClass]
 
         except:
             print('Error reading staging file: no "dataClass" found in set' , stageSet)
@@ -154,7 +162,7 @@ class stagerSDMS:
 
         # -- Check if query items are correct
         for key, value in stageSet.items():
-            if key not in self._listOfQueryItem:
+            if key not in self._listOfQueryItems:
                 print('Error reading staging file: Query item does not exsist:', key)
                 return False
 
@@ -168,10 +176,10 @@ def main():
 
     # -- Connect to mongoDB
     dbUtil = mongoDbUtil("", "admin")
-    collHpssPicoDsts = dbUtil.getCollection("HPSS_PicoDsts")
 
     stager = stagerSDMS('stagingRequest.json')
-    stager.setCollections(collHpssPicoDsts)
+
+    stager.addCollection('picoDst', dbUtil.getCollection("HPSS_PicoDsts"))
     stager.markFilesToBeStaged()
     
 
