@@ -87,7 +87,7 @@ class stagerSDMS:
                 sys.exit(-1)
 
     # _________________________________________________________
-    def addCollection(self, dataClass, collection)
+    def addCollection(self, dataClass, collection):
         """Get collection from mongoDB."""
 
         if dataClass not in  self._listOfDataClasses:
@@ -96,16 +96,14 @@ class stagerSDMS:
 
         self._collections[dataClass] = collection
 
-
     # _________________________________________________________
     def _resetAllStagingMarks(self):
-        """Reset all staging marks.
-        
-           Add a line for every collection
-           """
-        for target in self._listOfTargets:
-            targetField = 'staging.stageMarker{0}'.format(target)
-            self._collHpssPicoDsts.UpdateMany({}, {'$set': {targetField: False}})
+        """Reset all staging marks."""
+
+        for dataClass, coll in self._collections.items():
+            for target in self._listOfTargets:
+                targetField = 'staging.stageMarker{0}'.format(target)
+                coll.update_many({}, {'$set': {targetField: False}})
 
     # _________________________________________________________
     def markFilesToBeStaged(self):
@@ -116,15 +114,20 @@ class stagerSDMS:
         for stageSet in self._sets:
             if not self._prepareSet(stageSet):
                 continue
-
-            self._collHpssPicoDsts.UpdateMany(stageSet, {'$set': {self._targetField: True}})
+            print('doo', stageSet, self._coll.find(stageSet).count())
+            self._coll.update_many(stageSet, {'$set': {self._targetField: True}})
 
     # _________________________________________________________
     def listOfFilesToBeStaged(self):
         """Returns a list of all files to be staged"""
-        
-        nStaged = self._collHpssPicoDsts.Find({'staging.stageMarkerXRD': True}).count()
-        print("Number of files to be staged:", nStaged)
+
+        for dataClass, coll in self._collections.items():
+            print ('For {0} in collection: {1}'.format(dataClass, coll.name))
+
+            for target in self._listOfTargets:
+                targetField = 'staging.stageMarker{0}'.format(target)
+                nStaged = coll.find({targetField: True}).count()        
+                print('   Files to be staged on {0}: {1}'.format(target, nStaged))
 
     # _________________________________________________________
     def _prepareSet(self, stageSet):
@@ -180,8 +183,10 @@ def main():
     stager = stagerSDMS('stagingRequest.json')
 
     stager.addCollection('picoDst', dbUtil.getCollection("HPSS_PicoDsts"))
+
+    stager.listOfFilesToBeStaged()
     stager.markFilesToBeStaged()
-    
+    stager.listOfFilesToBeStaged()
 
     dbUtil.close()
 # ____________________________________________________________________________

@@ -176,9 +176,9 @@ class hpssUtil:
  
         # -- Loop of the list of subfolders
         for subFolder in iter(p.stdout.readline, b''):
-#            if "Run10.bak" in subFolder.decode("utf-8").rstrip():
-            print("SubFolder: ", subFolder.decode("utf-8").rstrip())
-            self._parseSubFolder(subFolder.decode("utf-8").rstrip())
+            if "Run14" in subFolder.decode("utf-8").rstrip():
+                print("SubFolder: ", subFolder.decode("utf-8").rstrip())
+                self._parseSubFolder(subFolder.decode("utf-8").rstrip())
             
     # _________________________________________________________
     def _parseSubFolder(self, subFolder): 
@@ -273,6 +273,10 @@ class hpssUtil:
                     lineCleaned.startswith('HTAR: d'):
                 continue
             
+            if 'ERROR: No such file: {0}.idx'.format(hpssDoc['fileFullPath']) == lineCleaned :
+                print('ERROR no IDX file ...', lineCleaned, '... recovering')
+                return
+
             lineTokenized = lineCleaned.split(' ', 7)
 
             if len(lineTokenized) < 7:
@@ -369,7 +373,7 @@ class hpssUtil:
         if not listDocs:
             return
 
-        print("Insert List: Try to add {0} picoDsts".format(len(listDocs)))
+#        print("Insert List: Try to add {0} picoDsts".format(len(listDocs)))
 
         # -- Clean listDocs with duplicate entries and move them on extra list: listDuplicates
         listDuplicates = []

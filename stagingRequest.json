@@ -1,5 +1,5 @@
 {"sets":[
-	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "11GeV"},
+	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "11GeV"},
 	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "10GeV"}
 	]
 }
