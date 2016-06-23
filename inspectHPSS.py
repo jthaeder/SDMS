@@ -155,7 +155,7 @@ class hpssInspectUtil:
     def compareDuplicates(self):
         """Compare duplicates in collection with entries in picoDsts."""
 
-        with open("toBeDeletedx.txt", "w") as toBeDeleted:
+        with open("toBeDeleted.txt", "w") as toBeDeleted:
 
             for duplicate in self._collHpssDuplicates.find({}):
                 if duplicate['isInTarFile'] == True or duplicate['isInRunBak'] == False:
@@ -165,6 +165,7 @@ class hpssInspectUtil:
                 
                 if orig['fileSize'] != duplicate['fileSize']:
                     print('Is NOT equal: orig {0} - duplicate {1} : {2}'.format(orig['fileSize'],duplicate['fileSize'], duplicate['filePath']))
+#                    print(duplicate['fileFullPath'], file=toBeDeleted)
                     continue
 
                 print(duplicate['fileFullPath'], file=toBeDeleted)
@@ -189,19 +190,19 @@ def main():
     inspect.generalInfo()
 
     # -- Check if all files are still on HPSS
-#    inspect.inspector()
+    inspect.inspector()
 
     # -- Print Overview picoDsts
-#    inspect.printOverviewPicoDst()
+    inspect.printOverviewPicoDst()
 
     # -- Print Overview picoDsts - duplicates
-    inspect.printOverviewDuplicates()
+#    inspect.printOverviewDuplicates()
 
     # -- Print disinct fields
-#    inspect.printDistinct()
+    inspect.printDistinct()
 
     # -- Compare duplicates in duplicate collection
-    inspect.compareDuplicates()
+#    inspect.compareDuplicates()
 
 
     dbUtil.close()
