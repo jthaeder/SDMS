@@ -11,12 +11,14 @@ hpssBaseDir=/nersc/projects/starofl/picodsts
 
 ############################################################
 
-#runs="Run10 Run11 Run12 Run13"
-runs="Run14"  # only for preview2 for now
+# -- run year
+runs="Run14"
 
+# -- subset of production
 production="200GeV/physics2/P15ic"
 
 ############################################################
+
 pushd ${projectBaseDir} > /dev/null
 
 for run in $runs ; do 
