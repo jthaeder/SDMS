@@ -176,7 +176,7 @@ class hpssUtil:
  
         # -- Loop of the list of subfolders
         for subFolder in iter(p.stdout.readline, b''):
-            if "Run14" in subFolder.decode("utf-8").rstrip():
+            if "Run" in subFolder.decode("utf-8").rstrip():
                 print("SubFolder: ", subFolder.decode("utf-8").rstrip())
                 self._parseSubFolder(subFolder.decode("utf-8").rstrip())
             
@@ -401,10 +401,6 @@ def main():
     # -- Connect to mongoDB
     dbUtil = mongoDbUtil("", "admin")
 
-    dbUtil.dropCollection("HPSS_Files")
-    dbUtil.dropCollection("HPSS_PicoDsts")
-    dbUtil.dropCollection("HPSS_Duplicates")
-
     collHpssFiles      = dbUtil.getCollection("HPSS_Files")
     collHpssPicoDsts   = dbUtil.getCollection("HPSS_PicoDsts")
     collHpssDuplicates = dbUtil.getCollection("HPSS_Duplicates")
@@ -414,6 +410,7 @@ def main():
     hpss.getFileList()
 
     dbUtil.close()
+
 # ____________________________________________________________________________
 if __name__ == "__main__":
     print("Start HPSS Crawler!")
