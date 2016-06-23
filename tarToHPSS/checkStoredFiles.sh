@@ -14,7 +14,7 @@ hpssBaseDir=/nersc/projects/starofl/picodsts
 runs="Run14"
                                                                                                                                     
 # -- subset of production
-production="200GeV/physics2/P15ic"
+production="AuAu/200GeV/physics2/P15ic"
 
 ############################################################
 
@@ -25,7 +25,8 @@ for run in $runs ; do
 
     # -- get list of files from HPSS
     hsi -P find ${hpssBaseDir}/${run}/${production} -name "*.tar" > ${basePath}/${run}_picoList.lst.hpss
-   
+    hsi -P find ${hpssBaseDir}/${run}/${production} -name "*.tar.idx" > ${basePath}/${run}_picoList.idx.lst.hpss
+
     while read -r line ; do                                                                                       
         day=`basename ${line}`                                                                                    
         folder=`dirname ${line}`                                                                                  
@@ -43,12 +44,18 @@ for run in $runs ; do
 
 	# -- build in and out paths
 	tarFile=${day}.tar
+	idxFile=${day}.tar.idx
 	tarFolder=${hpssBaseDir}/${folder}
 	projectFolder=${projectBaseDir}/${line}
 	
 	grep "${tarFolder}/${tarFile}" ${basePath}/${run}_picoList.lst.hpss > /dev/null
         if [ $? -ne 0 ] ; then
             echo "${tarFolder}/${tarFile} missing"
+        fi
+
+	grep "${tarFolder}/${idxFile}" ${basePath}/${run}_picoList.idx.lst.hpss > /dev/null
+        if [ $? -ne 0 ] ; then
+            echo "${tarFolder}/${idxFile} missing"
         fi
         
     done < <(find ${run} -mindepth 5 -maxdepth 5 -type d)       
