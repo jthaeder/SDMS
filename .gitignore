@@ -63,3 +63,7 @@ target/
 
 # pyMongo Envs
 setenv.sh
+
+*.py~
+
+*.py#
