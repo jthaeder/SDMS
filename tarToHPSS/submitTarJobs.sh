@@ -50,7 +50,7 @@ for run in $runs ; do
 	    continue
 	fi
 
-	# -- build log path and creat it
+	# -- build log path and create it
 	logFolder="${basePath}/log.${folder}"
 	mkdir -p ${logFolder}
 
