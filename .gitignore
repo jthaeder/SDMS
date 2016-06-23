@@ -67,3 +67,8 @@ setenv.sh
 *.py~
 
 *.py#
+
+# tarToHPSS
+tarToHPSS/*list*
+tarToHPSS/log.*
+tarToHPSS/*.lst.hpss
