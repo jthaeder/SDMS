@@ -114,7 +114,6 @@ class stagerSDMS:
         for stageSet in self._sets:
             if not self._prepareSet(stageSet):
                 continue
-            print('doo', stageSet, self._coll.find(stageSet).count())
             self._coll.update_many(stageSet, {'$set': {self._targetField: True}})
 
     # _________________________________________________________
@@ -165,13 +164,16 @@ class stagerSDMS:
 
         # -- Check if query items are correct
         for key, value in stageSet.items():
+            if "starDetails." in key:
+                continue
             if key not in self._listOfQueryItems:
-                print('Error reading staging file: Query item does not exsist:', key)
+                print('Error reading staging file: Query item does not exist:', key, value)
                 return False
+            del(stageSet[key])
+            starKey = 'starDetails.' + key
+            stageSet[starKey] = value
 
         return True
-
-
 
 # ____________________________________________________________________________
 def main():
@@ -181,12 +183,19 @@ def main():
     dbUtil = mongoDbUtil("", "admin")
 
     stager = stagerSDMS('stagingRequest.json')
-
     stager.addCollection('picoDst', dbUtil.getCollection("HPSS_PicoDsts"))
 
-    stager.listOfFilesToBeStaged()
     stager.markFilesToBeStaged()
     stager.listOfFilesToBeStaged()
+
+# ------------------------------------------------------------
+# WorkFlow to be added
+# ------------------------------------------------------------
+# - check in xrd_picoList
+#   - count staged files per set
+#   - if more then 20% missing do staging of all tar files
+# ------------------------------------------------------------
+
 
     dbUtil.close()
 # ____________________________________________________________________________
