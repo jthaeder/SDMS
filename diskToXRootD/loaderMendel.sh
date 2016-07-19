@@ -41,5 +41,5 @@ module use /common/star/pkg/Modules || exit $?
 module load python pymongo star-dm-scripts xrootd || exit $?
 
 echo "starting loader:"
-loader --xrd-manager mc0101-ib
+loader --xrd-manager mc0101-ib --max-load-fails 1500
 echo "loader finished: " $?
