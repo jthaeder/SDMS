@@ -23,7 +23,7 @@ MONGO_DB_NAME = 'STAR_XROOTD'
 ADMIN_USER    = 'STAR_XROOTD_admin'
 READONLY_USER = 'STAR_XROOTD_ro'
 
-COLLECTION_INDICES = {'HPSS_Files': 'fileFullPath', 'HPSS_PicoDsts': 'filePath'}
+COLLECTION_INDICES = {'HPSS_Files': 'fileFullPath', 'HPSS_PicoDsts': 'filePath', 'XRD_DataServers': 'nodeName'}
 
 ##############################################
 
@@ -68,7 +68,7 @@ class mongoDbUtil:
         self.client = MongoClient('mongodb://{0}:{1}@{2}/{3}'.format(self.user, self.password, 
                                                                      MONGO_SERVER, MONGO_DB_NAME))
         self.db = self.client[MONGO_DB_NAME]
-        print ("Existing collections:", self.db.collection_names(include_system_collections = False))
+#        print ("Existing collections:", self.db.collection_names(include_system_collections = False))
 
     # _________________________________________________________
     def close(self):
