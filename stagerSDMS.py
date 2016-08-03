@@ -91,7 +91,7 @@ class stagerSDMS:
         """Get collection from mongoDB."""
 
         if dataClass not in  self._listOfDataClasses:
-            print('Error reading staging file: Unknown "dataClass"', self._dataClass, 'for adding collection')
+            print('Unknown "dataClass"', dataClass, 'for adding collection')
             return False
 
         self._collections[dataClass] = collection
