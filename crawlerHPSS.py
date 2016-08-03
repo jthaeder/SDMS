@@ -394,10 +394,35 @@ class hpssUtil:
             print("Insert List: Add {0} duplicate picoDsts".format(len(listDuplicates)))
             self._collHpssDuplicates.insert_many(listDuplicates, ordered=False)
 
+
+
+
+# ____________________________________________________________________________
+def checkForHPSSTransfer():
+    """Check for ongoing transfer of files into HPSS"""
+
+    cmdLine = 'qstat -u starofl'
+    cmd = shlex.split(cmdLine)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    
+    for lineTerminated in iter(p.stdout.readline, b''):
+        line = lineTerminated.decode("utf-8").rstrip('\t\n')
+        lineCleaned = ' '.join(line.split())
+
+        if "tarToHPSS" in lineCleaned:
+            return True
+
+    return False
+
 # ____________________________________________________________________________
 def main():
     """initialize and run"""
 
+    # -- Check for ongoing transfer into HPSS
+    if checkForHPSSTransfer():
+        print ("Abort - Data is currently moved to HPSS")
+        return
+        
     # -- Connect to mongoDB
     dbUtil = mongoDbUtil("", "admin")
 
