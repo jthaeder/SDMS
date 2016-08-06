@@ -23,7 +23,8 @@ MONGO_DB_NAME = 'STAR_XROOTD'
 ADMIN_USER    = 'STAR_XROOTD_admin'
 READONLY_USER = 'STAR_XROOTD_ro'
 
-COLLECTION_INDICES = {'HPSS_Files': 'fileFullPath', 'HPSS_PicoDsts': 'filePath', 'XRD_DataServers': 'nodeName'}
+COLLECTION_INDICES = {'HPSS_Files': 'fileFullPath', 'HPSS_PicoDsts': 'filePath', 'XRD_DataServers': 'nodeName',
+                      'XRD_PicoDsts': 'filePath'}
 
 ##############################################
 
@@ -85,7 +86,9 @@ class mongoDbUtil:
         try:
             collection.create_index([(COLLECTION_INDICES[collectionName], pymongo.ASCENDING)], unique=True)
         except KeyError:
-            print ("Warning: Collection", collectionName, "not known. Index not created.")
+            #print ("Warning: Collection", collectionName, "not known. Index not created.")
+            pass
+
             
         return collection
 
