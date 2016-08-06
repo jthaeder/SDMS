@@ -190,10 +190,10 @@ def main():
     inspect.generalInfo()
 
     # -- Check if all files are still on HPSS
-    inspect.inspector()
+#    inspect.inspector()
 
     # -- Print Overview picoDsts
-    inspect.printOverviewPicoDst()
+#    inspect.printOverviewPicoDst()
 
     # -- Print Overview picoDsts - duplicates
 #    inspect.printOverviewDuplicates()
