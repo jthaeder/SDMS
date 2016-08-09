@@ -1,15 +1,19 @@
 {"sets":[
 	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "7.7GeV"},
 	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "11GeV"},
-	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "19GeV"},
-	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "27GeV"},
 	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "39GeV"},
 	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "62GeV"},
 	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "200GeV"},
+
+	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "19GeV"},
+	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "27GeV"},
 	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "200GeV"},
+	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run11", "system": "pp", "energy": "500GeV"},
+
+	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run12", "system": "pp", "energy": "200GeV"},
+
+	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run13", "system": "pp", "energy": "510GeV"},
+
 	{"target": "XRD", "dataClass": "picoDst", "runyear": "Run14", "system": "AuAu", "energy": "200GeV", "trigger": "physics2", "production": "P15ic"}
 	]
 }
-
-
-
