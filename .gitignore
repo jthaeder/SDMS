@@ -72,3 +72,4 @@ setenv.sh
 tarToHPSS/*list*
 tarToHPSS/log.*
 tarToHPSS/*.lst.hpss
+*.csv
