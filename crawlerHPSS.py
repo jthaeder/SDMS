@@ -220,7 +220,7 @@ class hpssUtil:
                         if doc['fileType'] == "tar":
                             nDocsInTar = self._parseTarFile(doc)
                             self._collHpssFiles.find_one_and_update({'fileFullPath': doc['fileFullPath']},
-                                                                    {'$set': {'filesInTar': nDocsInTar})
+                                                                    {'$set': {'filesInTar': nDocsInTar}})
                             continue
 
                         if doc['fileType'] == "picoDst":
