@@ -222,10 +222,15 @@ class stagerSDMS:
             # -- Documents to be removed from stageTarget
             docsToRemove = docsSetStaged - docsSetHPSS
 
+            # -- Mark Documents as to be unStaged
+            self._collsStage[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
+                                                              { '$set': {'unStageFlag': True} })
+
+
             # -- Make list of documents to be removed
             mark collection files in staged collection as  to be removed
             -> use other clear script to explictly remove
-            
+
             listToStageFromHPSS = []
 
             #            get files  which are not in tar file
