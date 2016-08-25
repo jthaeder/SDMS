@@ -22,7 +22,7 @@ import datetime
 import shlex, subprocess
 import errno
 
-from mongoUtil import mongoDbUtil 
+from mongoUtil import mongoDbUtil
 import pymongo
 
 from pymongo import results
@@ -34,7 +34,7 @@ from pprint import pprint
 ##############################################
 # -- GLOBAL CONSTANTS
 
-XROOTD_PREFIX = '/export/data/xrd/ns/star' 
+XROOTD_PREFIX = '/export/data/xrd/ns/star'
 DISK_LIST = ['data', 'data1', 'data2', 'data3', 'data4']
 
 ##############################################
@@ -55,14 +55,14 @@ class processXRD:
         self._listOfTargets = ['picoDst', 'picoDstJet', 'reco', 'aschmah']
 
         # -- base Collection Names
-        self._baseStorage = {'XRD', 'HPSS'}
+        self._baseStorage = ['XRD', 'HPSS']
 
-        self._baseColl = {'picoDst': 'PicoDsts', 
-                          'picoDstJet': 'PicoDstsJets', 
-                          'aschmah': 'ASchmah', 
+        self._baseColl = {'picoDst': 'PicoDsts',
+                          'picoDstJet': 'PicoDstsJets',
+                          'aschmah': 'ASchmah',
                           'reco': 'Reco'}
-        
-        self._addCollections(dbUtil) 
+
+        self._addCollections(dbUtil)
 
     # _________________________________________________________
     def _addCollections(self, dbUtil):
@@ -75,89 +75,92 @@ class processXRD:
         self._collsXRDMiss    = dict.fromkeys(self._listOfTargets)
         self._collsXRDCorrupt = dict.fromkeys(self._listOfTargets)
         self._collsXRDNoHPSS  = dict.fromkeys(self._listOfTargets)
+        self._collsXRDNoLink  = dict.fromkeys(self._listOfTargets)
+
 
         for target in self._listOfTargets:
             self._collsHPSS[target] = dbUtil.getCollection('HPSS_' + self._baseColl[target])
-            
+
             self._collsXRD[target]        = dbUtil.getCollection('XRD_' + self._baseColl[target])
             self._collsXRDNew[target]     = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_new')
             self._collsXRDMiss[target]    = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_missing')
             self._collsXRDCorrupt[target] = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_corrupt')
             self._collsXRDNoHPSS[target]  = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_nohpss')
+            self._collsXRDNoLink[target]  = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_nolink')
 
     # _________________________________________________________
     def processNew(self, target):
         """process target"""
-        
+
         print("Process Target:", target)
 
         if target not in self._listOfTargets:
             print('Unknown "target"', target, 'for processing')
             return
-        
+
         # -- Loop over all documents in the new collection
         while True:
-            
+
             # - Get first document of target
             xrdDocNew = self._collsXRDNew[target].find_one({'storage.location': 'XRD', 'dataClass': target})
             if not xrdDocNew:
                 break
 
-            # -- Set of new nodes where file is stored at 
-            xrdDocs = list(self._collsXRDNew[target].find({'storage.location': 'XRD', 
-                                                           'dataClass': target, 
+            # -- Set of new nodes where file is stored at
+            xrdDocs = list(self._collsXRDNew[target].find({'storage.location': 'XRD',
+                                                           'dataClass': target,
                                                            'filePath': xrdDocNew['filePath']}))
 
             nodeSet = set([item['storage']['detail'] for item in xrdDocs])
 
             # -----------------------------------------------
-            # -- Check if there is an existing document 
+            # -- Check if there is an existing document
             #    - check if fileSizes are equal
             #      - if not move new document to extra list
             #      - remove document from new collection
             #    - update the the storage fields
             #    - remove document from new collection
-            existDoc = self._collsXRD[target].find_one({'storage.location': 'XRD', 'dataClass': target, 
-                                                        'filePath': xrdDocNew['filePath']}) 
+            existDoc = self._collsXRD[target].find_one({'storage.location': 'XRD', 'dataClass': target,
+                                                        'filePath': xrdDocNew['filePath']})
             if existDoc:
                 detailsSet = set(existDoc['storage']['details'])
                 detailsSet.update(nodeSet)
 
-                # -- Check if the fileSizes match 
-                #    - if not move new document to extra collection : Corrupt 
+                # -- Check if the fileSizes match
+                #    - if not move new document to extra collection : Corrupt
                 if existDoc['fileSize'] != xrdDocNew['fileSize']:
-                    self._collsXRDCorrupt[target].insert(xrdDocNew)                   
-                    self._collsXRDNew[target].delete_one({xrdDocNew['_id']})                   
+                    self._collsXRDCorrupt[target].insert(xrdDocNew)
+                    self._collsXRDNew[target].delete_one({xrdDocNew['_id']})
                     continue
-                    
+
                 # -- Update existing document
-                self._collsXRD[target].find_one_and_update({'storage.location': 'XRD', 'dataClass': target, 
+                self._collsXRD[target].find_one_and_update({'storage.location': 'XRD', 'dataClass': target,
                                                             'filePath': xrdDocNew['filePath']},
-                                                           {'$set': {'storage.nCopies': len(detailsSet), 
+                                                           {'$set': {'storage.nCopies': len(detailsSet),
                                                                      'storage.details': list(detailsSet)}})
-                
+
                 # -- Remove entries from new collection
-                self._collsXRDNew[target].delete_many({'storage.location': 'XRD', 'dataClass': target, 
+                self._collsXRDNew[target].delete_many({'storage.location': 'XRD', 'dataClass': target,
                                                        'filePath': xrdDocNew['filePath']})
-                
+
                 continue
 
             # -----------------------------------------------
             # -- Get corresponding HPSS Document
             #    - if not move new document to extra collection
             #    - remove document from new collection
-            #    - create new document 
+            #    - create new document
             hpssDoc = self._collsHPSS[target].find_one({'dataClass': target,
                                                         'filePath': xrdDocNew['filePath'] })
 
             # -- Check if HPSS doc exists
             #    - if not move new document to extra collection : NoHPSS
             if not hpssDoc:
-                self._collsXRDNoHPSS[target].insert(xrdDocNew)                   
-                self._collsXRDNew[target].delete_one({xrdDocNew['_id']})                   
+                self._collsXRDNoHPSS[target].insert(xrdDocNew)
+                self._collsXRDNew[target].delete_one({xrdDocNew['_id']})
                 continue
 
-            # -- Create new document 
+            # -- Create new document
             doc = {'starDetails': hpssDoc['starDetails'],
                    'dataClass': hpssDoc['dataClass'],
                    'fileSize': int(hpssDoc['fileSize']),
@@ -168,7 +171,7 @@ class processXRD:
 
             # -----------------------------------------------
             # -- Check if fileSizes are equal
-            #    - if not move new document to extra collection : Corrupt 
+            #    - if not move new document to extra collection : Corrupt
             #    - remove document from new collection
             #    - if all files in xrdDocs have the same size
             #      - just add all in collection
@@ -176,51 +179,123 @@ class processXRD:
 
             # -- Get all fileSizes of the same document
             fileSizeSet = set([item['fileSize'] for item in xrdDocs])
-            
+
             # -- Check if fileSizes are equal
             if len(fileSizeSet) <= 1:
-                
+
                 # -- All are equal and equal to HPSS
                 #    - insert document in collection
                 #    - remove documents form new collection
                 if int(hpssDoc['fileSize']) == xrdDocNew['fileSize']:
-                    self._collsXRD[target].insert(doc)                   
-                    self._collsXRDNew[target].delete_many({'storage.location': 'XRD', 
-                                                           'dataClass': target, 
+                    self._collsXRD[target].insert(doc)
+                    self._collsXRDNew[target].delete_many({'storage.location': 'XRD',
+                                                           'dataClass': target,
                                                            'filePath': xrdDocNew['filePath']})
                     continue
 
                 # -- All are equal and NOT equal to HPSS
-                #    - move new documents to extra list 
+                #    - move new documents to extra list
                 #    - remove documents form new collection
                 else:
-                    self._collsXRDCorrupt[target].insert_many(xrdDocs)                   
-                    self._collsXRDNew[target].delete_many({'storage.location': 'XRD', 
-                                                           'dataClass': target, 
+                    self._collsXRDCorrupt[target].insert_many(xrdDocs)
+                    self._collsXRDNew[target].delete_many({'storage.location': 'XRD',
+                                                           'dataClass': target,
                                                            'filePath': xrdDocNew['filePath']})
                     continue
 
             # -- Not all fileSizes are equal - only consider first document
             else:
                 doc['storage']['details'] = xrdDocNew['storage']['detail']
-                doc['storage']['nCopies'] = 1 
-                
+                doc['storage']['nCopies'] = 1
+
                 # -- Equal to HPSS
                 #    - insert document in collection
                 #    - remove documents form new collection
                 if int(hpssDoc['fileSize']) == xrdDocNew['fileSize']:
-                    self._collsXRD[target].insert(doc)                   
-                    self._collsXRDNew[target].delete_one({xrdDocNew['_id']})                   
+                    self._collsXRD[target].insert(doc)
+                    self._collsXRDNew[target].delete_one({xrdDocNew['_id']})
                     continue
-                                
+
                 # -- Not equal to HPSS
-                #    - move new documents to extra list 
+                #    - move new documents to extra list
                 #    - remove documents form new collection
-                else: 
-                    self._collsXRDCorrupt[target].insert(xrdDocNew)                   
-                    self._collsXRDNew[target].delete_one({xrdDocNew['_id']})                   
+                else:
+                    self._collsXRDCorrupt[target].insert(xrdDocNew)
+                    self._collsXRDNew[target].delete_one({xrdDocNew['_id']})
                     continue
-            
+
+    # _________________________________________________________
+    def processMiss(self, target):
+        """process target of missing files
+
+            Loop over collection of missing files and remove them from
+            XRD collection. If file has several copies, remove one copy.
+            """
+
+        print("Process Target:", target, "missing")
+
+        if target not in self._listOfTargets:
+            print('Unknown "target"', target, 'for processing')
+            return
+
+        # -- process broken links of target
+        self._processMissBrokenLinks(target)
+
+        # -- Loop over all documents in the new collection
+        while True:
+
+            # - Get first document of target
+            xrdDocMiss = self._collsXRDMiss[target].find_one({'storage.location': 'XRD', 'dataClass': target})
+            if not xrdDocMiss:
+                break
+
+            # -----------------------------------------------
+            # -- Get existing document
+            existDoc = self._collsXRD[target].find_one({'storage.location': 'XRD', 'dataClass': target,
+                                                        'filePath': xrdDocMiss['filePath'],
+                                                        'storage.details': xrdDocMiss['storage']['detail']})
+            # -- Not a document
+            #    - remove it from list dependend on cases
+            if not existDoc:
+                print("Doc not even in list", xrdDocMiss['filePath'])
+                self._collsXRDMiss[target].delete_one({xrdDocMiss['_id']})
+                continue
+
+            # -- Remove entry if only one copy
+            if existDoc['storage']['nCopies'] == 1:
+                self._collsXRD[target].delete_one({existDoc['_id']})
+
+            # -- Remove one storge detail
+            else:
+                detailsSet = set(existDoc['storage']['details'])
+                detailsSet.delete(xrdDocMiss['storage']['detail'])  ## CHECK THIS METHOD
+
+                self._collsXRD[target].find_one_and_update({'storage.location': 'XRD',
+                                                            'dataClass': target,
+                                                            'filePath': xrdDocMiss['filePath'],
+                                                            'storage.details': xrdDocMiss['storage']['detail']},
+                                                           {'$set': {'storage.nCopies': len(detailsSet),
+                                                                     'storage.details': list(detailsSet)}})
+
+            # -- Remove from list of missing
+            self._collsXRDMiss[target].delete_one({xrdDocMiss['_id']})
+
+
+    # _________________________________________________________
+    def _processMissBrokenLinks(self, target):
+        """Move broken links in new collection"""
+
+            xrdDocs = self._collsXRDMiss[target].find({'storage.location': 'XRD',
+                                                        'dataClass': target,
+                                                        'xxx': "brokenLink"})
+
+            self._collsXRDNoLink[target].insert_many(xrdDocs)
+
+            self._collsXRDMiss[target].delete_many({'storage.location': 'XRD',
+                                                        'dataClass': target,
+                                                        'xxx': "brokenLink"})
+)
+
 # ____________________________________________________________________________
 def main():
     """initialize and run"""
@@ -232,9 +307,7 @@ def main():
 
     # -- process different dataClasses
     xrd.processNew('picoDst')
-#    xrd.process('picoDstsJets')
-#   xrd.process('reco')
-#   xrd.process('aschmah')
+    xrd.processMiss('picoDst')
 
     # -- Update data server DB
 
@@ -243,10 +316,3 @@ def main():
 if __name__ == "__main__":
     print("Start XRD Processing!")
     sys.exit(main())
-
-
-
-
-
-
-
