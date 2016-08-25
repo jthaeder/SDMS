@@ -289,7 +289,7 @@ class hpssUtil:
                 continue
 
             fileFullPath  = lineTokenized[6]
-            fileSize      = lineTokenized[3]
+            fileSize      = int(lineTokenized[3])
 
             # -- select only dataClass
             if not fileFullPath.endswith(self._fileSuffix):
