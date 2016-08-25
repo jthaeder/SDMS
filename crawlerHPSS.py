@@ -7,43 +7,43 @@ mongoDB collections.
 
 HPSSFiles: Is a collection of all files within those folders
 -> This is the true represetation on what is on tape.
-Every time the crawler runs, it updates the lastSeen field 
+Every time the crawler runs, it updates the lastSeen field
 
 unique index is: fileFullPath
 
 fileType can be: tar, idx, picoDst, other
 
-This is a typical document: 
-{'_id': ObjectId('5723e67af157a6a310232458'), 
- 'fileSize': '13538711552', 
- 'fileType': 'tar', 
- 'fileFullPath': '/nersc/projects/starofl/picodsts/Run10/AuAu/11GeV/all/P10ih/148.tar', 
+This is a typical document:
+{'_id': ObjectId('5723e67af157a6a310232458'),
+ 'fileSize': '13538711552',
+ 'fileType': 'tar',
+ 'filesInTar': 23,
+ 'fileFullPath': '/nersc/projects/starofl/picodsts/Run10/AuAu/11GeV/all/P10ih/148.tar',
   'lastSeen': '2016-04-29'}
-
 
 HPSSPicoDsts: Is a collection of all picoDsts stored on HPSS,
 -> Every picoDst should show up only once. Duplicate entries are caught seperatly (see below)
 
 unique index is: filePath
 
-This is a typical document: 
-{'_id': 'Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root', 
- 'filePath': 'Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root', 
- 'fileSize': '5103599', 
- 'fileFullPath': '/project/projectdirs/starprod/picodsts/Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root', 
- 'dataClass': 'picoDst', 
+This is a typical document:
+{'_id': 'Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root',
+ 'filePath': 'Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root',
+ 'fileSize': '5103599',
+ 'fileFullPath': '/project/projectdirs/starprod/picodsts/Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root',
+ 'dataClass': 'picoDst',
  'isInTarFile': True,
- 'fileFullPathTar': '/nersc/projects/starofl/picodsts/Run10/AuAu/11GeV/all/P10ih/149.tar', 
- 'starDetails': {'runyear': 'Run10', 
-                 'system': 'AuAu', 
-                 'energy': '11GeV', 
-                 'trigger': 'all', 
-                 'production': 'P10ih', 
-                 'day': 149, 
-                 'runnumber': 11149081, 
+ 'fileFullPathTar': '/nersc/projects/starofl/picodsts/Run10/AuAu/11GeV/all/P10ih/149.tar',
+ 'starDetails': {'runyear': 'Run10',
+                 'system': 'AuAu',
+                 'energy': '11GeV',
+                 'trigger': 'all',
+                 'production': 'P10ih',
+                 'day': 149,
+                 'runnumber': 11149081,
                  'stream': 'st_physics_adc',
-                 'picoType': 'raw'}, 
- 'staging': {'stageMarkerXRD': False}} 
+                 'picoType': 'raw'},
+ 'staging': {'stageMarkerXRD': False}}
 
 HPSSDuplicates: Collection of duplicted picoDsts on HPSS
 
@@ -59,7 +59,7 @@ import socket
 import datetime
 import shlex, subprocess
 
-from mongoUtil import mongoDbUtil 
+from mongoUtil import mongoDbUtil
 import pymongo
 
 from pymongo import results
@@ -96,7 +96,7 @@ class hpssUtil:
 
         if dataClass == 'picoDst':
             pathKeys = pathKeysSchema.split(os.path.sep)
-            
+
             # -- Get the type from each path key (tailing % char), or 's' for
             #    string if absent.  i.e.
             #    [['runyear', 's'], ['system', 's'], ['day', 'd'], ['runnumber', 'd']]
@@ -120,19 +120,19 @@ class hpssUtil:
 
                 for idx in range(len(tokenizedPath)):
                     isDate = True
-                    try: 
+                    try:
                         date = int(tokenizedPath[idx])
                         if date > 370:
                             isDate = False
                     except ValueError:
                         isDate = False
-                        
+
                     if isDate:
                         return idx
                 return -1
-                    
+
             dateIdx = _getDateIndex(tokenizedPath)
-            
+
             if dateIdx == 4 and "GeV" in tokenizedPath[2]:
                 # ORIG: pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber'
                 pathKeysSchema = 'runyear/system/energy/trigger/day%d/runnumber'
@@ -152,7 +152,7 @@ class hpssUtil:
     # _________________________________________________________
     def setCollections(self, collHpssFiles, collHpssPicoDsts, collHpssDuplicates):
         """Get collection from mongoDB."""
-        
+
         self._collHpssFiles      = collHpssFiles
         self._collHpssPicoDsts   = collHpssPicoDsts
         self._collHpssDuplicates = collHpssDuplicates
@@ -173,29 +173,29 @@ class hpssUtil:
         cmdLine = 'hsi -q ls -1 {0}/{1}'.format(HPSS_BASE_FOLDER, picoFolder)
         cmd = shlex.split(cmdLine)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
- 
+
         # -- Loop of the list of subfolders
         for subFolder in iter(p.stdout.readline, b''):
             if "Run" in subFolder.decode("utf-8").rstrip():
                 print("SubFolder: ", subFolder.decode("utf-8").rstrip())
                 self._parseSubFolder(subFolder.decode("utf-8").rstrip())
-            
+
     # _________________________________________________________
-    def _parseSubFolder(self, subFolder): 
+    def _parseSubFolder(self, subFolder):
         """Get recursive list of folders and files in subFolder ... as "ls" output."""
-        
+
         cmdLine = 'hsi -q ls -lR {0}'.format(subFolder)
         cmd = shlex.split(cmdLine)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         # -- Parse ls output line-by-line -> utilizing output blocks in ls
-        inBlock = 0        
+        inBlock = 0
         listPicoDsts = []
         for lineTerminated in iter(p.stdout.readline, b''):
             line = lineTerminated.decode("utf-8").rstrip('\t\n')
             lineCleaned = ' '.join(line.split())
-        
-            if lineCleaned.startswith(subFolder): 
+
+            if lineCleaned.startswith(subFolder):
                 inBlock = 1
                 self._currentBlockPath = line.rstrip(':')
             else:
@@ -203,52 +203,57 @@ class hpssUtil:
                     inBlock = 0
                     self._currentBlockPath = ""
                 else:
-                    if inBlock and not lineCleaned.startswith('d'):  
+                    if inBlock and not lineCleaned.startswith('d'):
                         doc = self._parseLine(lineCleaned)
 
                         # -- update lastSeen and insert if not in yet
-                        ret = self._collHpssFiles.find_one_and_update({'fileFullPath': doc['fileFullPath']}, 
-                                                                      {'$set': {'lastSeen': self._today}, '$setOnInsert' : doc}, 
-                                                                      upsert = True)
-                        
+                        ret = self._collHpssFiles.find_one_and_update({'fileFullPath': doc['fileFullPath']},
+                                                                      {'$set': {'lastSeen': self._today},
+                                                                       '$setOnInsert' : doc},
+                                                                       upsert = True)
+
                         # -- document already there do nothing
                         if ret:
                             continue
 
                         # -- new document inserted - add the picoDst(s)
-                        if doc['fileType'] == "picoDst":
-                            listPicoDsts.append(self._makePicoDstDoc(doc['fileFullPath'], doc['fileSize'])) 
-                        elif doc['fileType'] == "tar":
-                            self._parseTarFile(doc)
+                        if doc['fileType'] == "tar":
+                            nDocsInTar = self._parseTarFile(doc)
+                            self._collHpssFiles.find_one_and_update({'fileFullPath': doc['fileFullPath']},
+                                                                    {'$set': {'filesInTar': nDocsInTar})
+                            continue
 
-                        if len(listPicoDsts) >= 10000:
-                            self._insertPicoDsts(listPicoDsts)
-                            listPicoDsts[:] = []
+                        if doc['fileType'] == "picoDst":
+                            listPicoDsts.append(self._makePicoDstDoc(doc['fileFullPath'], doc['fileSize']))
+
+                            if len(listPicoDsts) >= 10000:
+                                self._insertPicoDsts(listPicoDsts)
+                                listPicoDsts[:] = []
 
         # -- Insert picoDsts in collection
         self._insertPicoDsts(listPicoDsts)
 
     # _________________________________________________________
-    def _parseLine(self, line): 
+    def _parseLine(self, line):
         """Parse one entry in HPSS subfolder.
 
            Get every file with full path, size, and details
            """
 
         lineTokenized = line.split(' ', 9)
-        
+
         fileName     = lineTokenized[8]
         fileFullPath = "{0}/{1}".format(self._currentBlockPath, fileName)
-        fileSize     = lineTokenized[4]
+        fileSize     = int(lineTokenized[4])
         fileType     = "other"
-        
+
         if fileName.endswith(".tar"):
             fileType = "tar"
         elif fileName.endswith(".idx"):
             fileType = "idx"
         elif fileName.endswith(".picoDst.root"):
             fileType = "picoDst"
-            
+
         # -- return record
         return { 'fileFullPath': fileFullPath, 'fileSize': fileSize, 'fileType': fileType}
 
@@ -256,7 +261,7 @@ class hpssUtil:
     def _parseTarFile(self, hpssDoc):
         """Get Content of tar file and parse it.
 
-           return a list of picoDsts
+           return a number of documents in Tar file
            """
 
         cmdLine = 'htar -tf {0}'.format(hpssDoc['fileFullPath'])
@@ -268,11 +273,11 @@ class hpssUtil:
         for lineTerminated in iter(p.stdout.readline, b''):
             line = lineTerminated.decode("utf-8").rstrip('\t\n')
             lineCleaned = ' '.join(line.split())
-            
+
             if lineCleaned == "HTAR: HTAR SUCCESSFUL" or \
                     lineCleaned.startswith('HTAR: d'):
                 continue
-            
+
             if 'ERROR: No such file: {0}.idx'.format(hpssDoc['fileFullPath']) == lineCleaned :
                 print('ERROR no IDX file ...', lineCleaned, '... recovering')
                 return
@@ -280,7 +285,7 @@ class hpssUtil:
             lineTokenized = lineCleaned.split(' ', 7)
 
             if len(lineTokenized) < 7:
-                print("Error tokenizing hTar line:", lineTokenized) 
+                print("Error tokenizing hTar line:", lineTokenized)
                 continue
 
             fileFullPath  = lineTokenized[6]
@@ -289,15 +294,19 @@ class hpssUtil:
             # -- select only dataClass
             if not fileFullPath.endswith(self._fileSuffix):
                 continue
-  
+
             # -- make PicoDst document and add it to list
             listDocs.append(self._makePicoDstDoc(fileFullPath, fileSize, hpssDoc=hpssDoc, isInTarFile=True))
- 
+
+        nDocsInTar = len(listDocs)
+
         # -- Insert picoDsts in collection
         self._insertPicoDsts(listDocs)
 
+        return nDocsInTar
+
     # _________________________________________________________
-    def _makePicoDstDoc(self, fileFullPath, fileSize, hpssDoc=None, isInTarFile=False): 
+    def _makePicoDstDoc(self, fileFullPath, fileSize, hpssDoc=None, isInTarFile=False):
         """Create entry for picoDsts."""
 
         # -- identify start of "STAR naming conventions"
@@ -306,25 +315,25 @@ class hpssUtil:
         # -- Create document
         doc = {
                'filePath':     fileFullPath[idxBasePath:],
-               'fileFullPath': fileFullPath, 
+               'fileFullPath': fileFullPath,
                'fileSize':     fileSize,
                'dataClass':    self._dataClass,
                'isInTarFile':  isInTarFile,
                'staging':      { 'stageMarkerXRD': False},
                'isInRunBak':   False
-            }            
+            }
 
         if isInTarFile:
             doc['fileFullPathTar'] = hpssDoc['fileFullPath']
 
-        # -- Strip basePath of fileName and tokenize it 
+        # -- Strip basePath of fileName and tokenize it
         cleanPathTokenized = doc['filePath'].split(os.path.sep)
 
-        # -- Get TypedKeys for tokenized path 
+        # -- Get TypedKeys for tokenized path
         typedPathKeys = self._getTypedPathKeys(cleanPathTokenized)
 
         # -- Create STAR details sub document
-        docStarDetails = dict([(keys[0], self._typeMap[keys[1]](value)) 
+        docStarDetails = dict([(keys[0], self._typeMap[keys[1]](value))
                                for keys, value in zip(typedPathKeys, cleanPathTokenized)])
 
         # -- remove ".bak" from runyear and _id / fileType (for the uniqueness of the picoDst)
@@ -341,10 +350,10 @@ class hpssUtil:
         fileNameParts = re.split(regexStream, cleanPathTokenized[-1])
         if len(fileNameParts) == 3 and len(fileNameParts[0]) == 0:
             docStarDetails['stream'] = fileNameParts[1]
-            
+
             strippedSuffix = fileNameParts[-1][1:-self._lengthFileSuffix]
             strippedSuffixParts = strippedSuffix.split('_')
-            
+
             docStarDetails['picoType'] = strippedSuffixParts[0] \
                 if len(strippedSuffixParts) == 2 \
                 else strippedSuffix
@@ -352,7 +361,6 @@ class hpssUtil:
             print('xxx: ', fileNameParts, docStarDetails)
             docStarDetails['stream'] = 'xx'
             docStarDetails['picoType'] = 'xx'
-            
 
         # -- Add STAR details to document
         doc['starDetails'] = docStarDetails
@@ -364,8 +372,8 @@ class hpssUtil:
     # _________________________________________________________
     def _insertPicoDsts(self, listDocs):
         """Insert list of picoDsts in to collections.
-        
-        In HPSSPicoDst collection and 
+
+        In HPSSPicoDst collection and
         in to HPSSDuplicates collection if a duplicate
         """
 
@@ -395,8 +403,6 @@ class hpssUtil:
             self._collHpssDuplicates.insert_many(listDuplicates, ordered=False)
 
 
-
-
 # ____________________________________________________________________________
 def checkForHPSSTransfer():
     """Check for ongoing transfer of files into HPSS"""
@@ -404,7 +410,7 @@ def checkForHPSSTransfer():
     cmdLine = 'qstat -u starofl'
     cmd = shlex.split(cmdLine)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    
+
     for lineTerminated in iter(p.stdout.readline, b''):
         line = lineTerminated.decode("utf-8").rstrip('\t\n')
         lineCleaned = ' '.join(line.split())
@@ -422,7 +428,7 @@ def main():
     if checkForHPSSTransfer():
         print ("Abort - Data is currently moved to HPSS")
         return
-        
+
     # -- Connect to mongoDB
     dbUtil = mongoDbUtil("", "admin")
 
