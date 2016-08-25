@@ -42,4 +42,5 @@ echo "STOPT SDMS - HPSS inspector"
 echo "-----------------------------------"
 echo " "
 
+
 popd > /dev/null

@@ -2,30 +2,7 @@
 b'This script requires python 3.4'
 
 """
-Stager which reads staging file and sets stageMarker in HPSSPicoDsts collection
 
-The staging file can have several sets, 
-
-each set can have the following parameters
-
- 'target'   : 'XRD'           (For now the only option)
-    as in listOfTargets = ['XRD']
-
- 'dataClass': 'picoDst'       (For now the only option)
-    as in  listOfDataClasses = ['picoDst']
-
- Data set parameters:
-    as in listOfQueryItems = ['runyear', 'system', 'energy', 'trigger', 'production', 'day', 'runnumber', 'stream']
-
- with example values:
- 'runyear': 'Run10', 
- 'system': 'AuAu', 
- 'energy': '11GeV', 
- 'trigger': 'all', 
- 'production': 'P10ih', 
- 'day': 149, 
- 'runnumber': 11149081, 
- 'stream': 'st_physics_adc',
 """
 
 import sys
@@ -40,7 +17,7 @@ import socket
 import datetime
 import shlex, subprocess
 
-from mongoUtil import mongoDbUtil 
+from mongoUtil import mongoDbUtil
 import pymongo
 
 from pymongo import results
@@ -55,7 +32,7 @@ from pprint import pprint
 DATA_SERVERS = "${ALL_DATASERVERS}"
 SOCKET_TIMEOUT = 5
 
-# ${PDSF_DATASERVERS} 
+# ${PDSF_DATASERVERS}
 # ${MENDEL_DATASERVERS}
 
 ##############################################
@@ -86,8 +63,8 @@ class dataServerCheck:
     # _________________________________________________________
     def _processClusterEnvFile(self):
         """Read env file and get list of active nodes"""
-        
-        if not os.path.isfile(self._clusterEnvFile): 
+
+        if not os.path.isfile(self._clusterEnvFile):
             print ('Cluster env file {0} does not exist!'.format(self._clusterEnvFile))
             sys.exit(-1)
 
@@ -96,7 +73,7 @@ class dataServerCheck:
         cmd = shlex.split(cmdLine)
 
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
- 
+
         for serverListString in iter(p.stdout.readline, b''):
             self._listOfDataServersXRD = serverListString.decode("utf-8").rstrip().split()
 
@@ -107,7 +84,7 @@ class dataServerCheck:
         if target not in  self._listOfTargets:
             print('Unknown "target"', target, 'for adding collection')
             return False
-            
+
         self._collections[target] = collection
 
     # _________________________________________________________
@@ -117,17 +94,17 @@ class dataServerCheck:
         if target not in  self._listOfTargets:
             print('Unknown "target"', target, 'for reporting')
             return False
-        
+
         self._target = target
 
         # -- Get list of already active or inactive server
-        self._listOfActiveServers = [d['nodeName'] for d in self._collections[self._target].find({'stateActive': True}, 
+        self._listOfActiveServers = [d['nodeName'] for d in self._collections[self._target].find({'stateActive': True},
                                                                                                  {'nodeName': True, '_id': False})]
-        
-        self._listOfInactiveServers = [d['nodeName'] for d in self._collections[self._target].find({'stateActive': False}, 
+
+        self._listOfInactiveServers = [d['nodeName'] for d in self._collections[self._target].find({'stateActive': False},
                                                                                                    {'nodeName': True, '_id': False})]
 
-        # -- Prepare list of changes 
+        # -- Prepare list of changes
         self._listOfNowInactiveServers = []
         self._listOfNowActiveServers = []
         self._listOfNewServers = []
@@ -157,14 +134,14 @@ class dataServerCheck:
     # _________________________________________________________
     def _updateDataServerList(self):
         """update list of servers"""
-        
+
         for server in self._listOfDataServersXRD:
             isActive = self._checkServer(server)
-            
+
     # _________________________________________________________
     def _checkServer(self, server):
         """check server
-        
+
             return true for active server
             return false for inactive server
             """
@@ -173,7 +150,7 @@ class dataServerCheck:
         isServerActive = self._isServerActive(server)
 
         # -- Create node document
-        doc = { 
+        doc = {
                'nodeName': server,
                'lastWalkerRun' : '2000-01-01',
                'totalSpace': -1,
@@ -182,7 +159,7 @@ class dataServerCheck:
                }
 
         # -- Check for state changes
-        #    Update the DB and lastSeen 
+        #    Update the DB and lastSeen
 
         # --- was active before
         if server in self._listOfActiveServers:
@@ -191,7 +168,7 @@ class dataServerCheck:
             # ---- now inactive
             if not isServerActive:
                 self._listOfNowInactiveServers.append(server)
-                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']}, 
+                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
                                                                     {'$set': {'setInactive': self._today, 'stateActive': isServerActive}})
 
         # --- was inactive before
@@ -201,38 +178,38 @@ class dataServerCheck:
             # ---- now active
             if isServerActive:
                 self._listOfNowActiveServers.append(server)
-                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']}, 
+                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
                                                                     {'$set': {'setInactive': -1, 'stateActive': isServerActive}})
-        # --- new 
+        # --- new
         else:
             self._listOfNewServers.append(server)
 
             # ---- now active
             if isServerActive:
                 self._listOfNowActiveServers.append(server)
-                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']}, 
-                                                                    {'$set': {'lastSeen': self._today, 
-                                                                              'setInactive': -1, 
-                                                                              'stateActive': isServerActive}, 
+                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
+                                                                    {'$set': {'lastSeen': self._today,
+                                                                              'setInactive': -1,
+                                                                              'stateActive': isServerActive},
                                                                      '$setOnInsert' : doc}, upsert = True)
             # ---- now inactive
             else:
                 self._listOfNowInactiveServers.append(server)
-                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']}, 
+                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
                                                                     {'$set': {'lastSeen': -1,
-                                                                              'setInactive': self._today, 
-                                                                              'stateActive': isServerActive}, 
+                                                                              'setInactive': self._today,
+                                                                              'stateActive': isServerActive},
                                                                      '$setOnInsert' : doc}, upsert = True)
 
 
     # _________________________________________________________
     def _isServerActive(self, server):
         """check server
-        
+
             return true for active server
             return false for inactive server
             """
-        
+
         isServerActive = True;
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(SOCKET_TIMEOUT)
@@ -242,7 +219,7 @@ class dataServerCheck:
         except socket.error:
             isServerActive = False
             sock.close()
-     
+
         sock.close()
 
         return isServerActive

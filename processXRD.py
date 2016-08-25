@@ -102,13 +102,13 @@ class processXRD:
         while True:
 
             # - Get first document of target
-            xrdDocNew = self._collsXRDNew[target].find_one({'storage.location': 'XRD', 'dataClass': target})
+            xrdDocNew = self._collsXRDNew[target].find_one({'storage.location': 'XRD', 'target': target})
             if not xrdDocNew:
                 break
 
             # -- Set of new nodes where file is stored at
             xrdDocs = list(self._collsXRDNew[target].find({'storage.location': 'XRD',
-                                                           'dataClass': target,
+                                                           'target': target,
                                                            'filePath': xrdDocNew['filePath']}))
 
             nodeSet = set([item['storage']['detail'] for item in xrdDocs])
@@ -120,7 +120,7 @@ class processXRD:
             #      - remove document from new collection
             #    - update the the storage fields
             #    - remove document from new collection
-            existDoc = self._collsXRD[target].find_one({'storage.location': 'XRD', 'dataClass': target,
+            existDoc = self._collsXRD[target].find_one({'storage.location': 'XRD', 'target': target,
                                                         'filePath': xrdDocNew['filePath']})
             if existDoc:
                 detailsSet = set(existDoc['storage']['details'])
@@ -134,13 +134,13 @@ class processXRD:
                     continue
 
                 # -- Update existing document
-                self._collsXRD[target].find_one_and_update({'storage.location': 'XRD', 'dataClass': target,
+                self._collsXRD[target].find_one_and_update({'storage.location': 'XRD', 'target': target,
                                                             'filePath': xrdDocNew['filePath']},
                                                            {'$set': {'storage.nCopies': len(detailsSet),
                                                                      'storage.details': list(detailsSet)}})
 
                 # -- Remove entries from new collection
-                self._collsXRDNew[target].delete_many({'storage.location': 'XRD', 'dataClass': target,
+                self._collsXRDNew[target].delete_many({'storage.location': 'XRD', 'target': target,
                                                        'filePath': xrdDocNew['filePath']})
 
                 continue
@@ -150,7 +150,7 @@ class processXRD:
             #    - if not move new document to extra collection
             #    - remove document from new collection
             #    - create new document
-            hpssDoc = self._collsHPSS[target].find_one({'dataClass': target,
+            hpssDoc = self._collsHPSS[target].find_one({'target': target,
                                                         'filePath': xrdDocNew['filePath'] })
 
             # -- Check if HPSS doc exists
@@ -162,7 +162,7 @@ class processXRD:
 
             # -- Create new document
             doc = {'starDetails': hpssDoc['starDetails'],
-                   'dataClass': hpssDoc['dataClass'],
+                   'target': hpssDoc['target'],
                    'fileSize': int(hpssDoc['fileSize']),
                    'filePath': hpssDoc['filePath'],
                    'fileFullPath': xrdDocNew['fileFullPath'],
@@ -189,7 +189,7 @@ class processXRD:
                 if int(hpssDoc['fileSize']) == xrdDocNew['fileSize']:
                     self._collsXRD[target].insert(doc)
                     self._collsXRDNew[target].delete_many({'storage.location': 'XRD',
-                                                           'dataClass': target,
+                                                           'target': target,
                                                            'filePath': xrdDocNew['filePath']})
                     continue
 
@@ -199,7 +199,7 @@ class processXRD:
                 else:
                     self._collsXRDCorrupt[target].insert_many(xrdDocs)
                     self._collsXRDNew[target].delete_many({'storage.location': 'XRD',
-                                                           'dataClass': target,
+                                                           'target': target,
                                                            'filePath': xrdDocNew['filePath']})
                     continue
 
@@ -245,13 +245,13 @@ class processXRD:
         while True:
 
             # - Get first document of target
-            xrdDocMiss = self._collsXRDMiss[target].find_one({'storage.location': 'XRD', 'dataClass': target})
+            xrdDocMiss = self._collsXRDMiss[target].find_one({'storage.location': 'XRD', 'target': target})
             if not xrdDocMiss:
                 break
 
             # -----------------------------------------------
             # -- Get existing document
-            existDoc = self._collsXRD[target].find_one({'storage.location': 'XRD', 'dataClass': target,
+            existDoc = self._collsXRD[target].find_one({'storage.location': 'XRD', 'target': target,
                                                         'filePath': xrdDocMiss['filePath'],
                                                         'storage.details': xrdDocMiss['storage']['detail']})
             # -- Not a document
@@ -271,7 +271,7 @@ class processXRD:
                 detailsSet.delete(xrdDocMiss['storage']['detail'])  ## CHECK THIS METHOD
 
                 self._collsXRD[target].find_one_and_update({'storage.location': 'XRD',
-                                                            'dataClass': target,
+                                                            'target': target,
                                                             'filePath': xrdDocMiss['filePath'],
                                                             'storage.details': xrdDocMiss['storage']['detail']},
                                                            {'$set': {'storage.nCopies': len(detailsSet),
@@ -286,13 +286,13 @@ class processXRD:
         """Move broken links in new collection"""
 
             xrdDocs = self._collsXRDMiss[target].find({'storage.location': 'XRD',
-                                                        'dataClass': target,
+                                                        'target': target,
                                                         'xxx': "brokenLink"})
 
             self._collsXRDNoLink[target].insert_many(xrdDocs)
 
             self._collsXRDMiss[target].delete_many({'storage.location': 'XRD',
-                                                        'dataClass': target,
+                                                        'target': target,
                                                         'xxx': "brokenLink"})
 )
 
@@ -305,7 +305,7 @@ def main():
 
     xrd = processXRD(dbUtil)
 
-    # -- process different dataClasses
+    # -- process different targets
     xrd.processNew('picoDst')
     xrd.processMiss('picoDst')
 

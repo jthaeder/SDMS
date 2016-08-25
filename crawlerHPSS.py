@@ -31,7 +31,7 @@ This is a typical document:
  'filePath': 'Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root',
  'fileSize': '5103599',
  'fileFullPath': '/project/projectdirs/starprod/picodsts/Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root',
- 'dataClass': 'picoDst',
+ 'target': 'picoDst',
  'isInTarFile': True,
  'fileFullPathTar': '/nersc/projects/starofl/picodsts/Run10/AuAu/11GeV/all/P10ih/149.tar',
  'starDetails': {'runyear': 'Run10',
@@ -86,15 +86,15 @@ class hpssUtil:
     """Helper Class for HPSS connections and retrieving stuff"""
 
     # _________________________________________________________
-    def __init__(self, dataClass = 'picoDst', pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber'):
-        #    def __init__(self, dataClass = 'picoDst', pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber%d'):
+    def __init__(self, target = 'picoDst', pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber'):
+        #    def __init__(self, target = 'picoDst', pathKeysSchema = 'runyear/system/energy/trigger/production/day%d/runnumber%d'):
         self._today = datetime.datetime.today().strftime('%Y-%m-%d')
 
-        self._dataClass        = dataClass
-        self._fileSuffix       = '.{0}.root'.format(dataClass)
+        self._target           = target
+        self._fileSuffix       = '.{0}.root'.format(target)
         self._lengthFileSuffix = len(self._fileSuffix)
 
-        if dataClass == 'picoDst':
+        if target == 'picoDst':
             pathKeys = pathKeysSchema.split(os.path.sep)
 
             # -- Get the type from each path key (tailing % char), or 's' for
@@ -291,7 +291,7 @@ class hpssUtil:
             fileFullPath  = lineTokenized[6]
             fileSize      = int(lineTokenized[3])
 
-            # -- select only dataClass
+            # -- select only target
             if not fileFullPath.endswith(self._fileSuffix):
                 continue
 
@@ -317,7 +317,7 @@ class hpssUtil:
                'filePath':     fileFullPath[idxBasePath:],
                'fileFullPath': fileFullPath,
                'fileSize':     fileSize,
-               'dataClass':    self._dataClass,
+               'target':       self._target,
                'isInTarFile':  isInTarFile,
                'staging':      { 'stageMarkerXRD': False},
                'isInRunBak':   False
