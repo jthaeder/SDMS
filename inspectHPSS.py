@@ -3,7 +3,8 @@ b'This script requires python 3.4'
 
 
 """
-bla
+Daily inspection of files on HPSS
+
 
 """
 
@@ -58,7 +59,11 @@ class hpssInspectUtil:
     # ____________________________________________________________________________
     def inspector(self):
         """Check if all files are still on HPSS."""
-        
+
+        print('\n==---------------------------------------------------------==')    
+        print('Inspector - check for files, changed within the last {0} days'.format(self._nDaysAgo))
+        print('==---------------------------------------------------------==')    
+
         nDaysAgo = (datetime.date.today() - datetime.timedelta(days=self._nDaysAgo)).strftime('%Y-%m-%d')
         
         lostPicoDsts = list(self._collHpssFiles.find({'lastSeen': {"$lt" : nDaysAgo}}))
@@ -74,6 +79,7 @@ class hpssInspectUtil:
 
         print('\n==---------------------------------------------------------==')    
         print('Collection:',  self._collHpssPicoDsts.name)
+        print('==---------------------------------------------------------==')    
                
         self._printOverviewLevelPicoDst(self._collHpssPicoDsts, 1, {})
 
@@ -81,8 +87,12 @@ class hpssInspectUtil:
     def printOverviewDuplicates(self):
         """Print overview of duplicate picoDsts."""
 
+        if self._collHpssDuplicates.count() == 0:
+            return
+
         print('\n==---------------------------------------------------------==')    
         print('Collection:',  self._collHpssDuplicates.name)
+        print('==---------------------------------------------------------==')    
                
         self._printOverviewLevelPicoDst(self._collHpssDuplicates, 1, {})
   
@@ -127,8 +137,12 @@ class hpssInspectUtil:
             elif key >= 3:
                 self._printListOfUniqEntries(self._collHpssPicoDsts, value)
                     
-#        print(list( self._collHpssPicoDsts.find({'isInRunBak': True})))
+        print(list( self._collHpssPicoDsts.find({'isInRunBak': True})))
 
+
+        if self._collHpssDuplicates.count() == 0:
+            return
+                
         print('\n==---------------------------------------------------------==')    
         print('Collection:',  self._collHpssDuplicates.name)
         print('==---------------------------------------------------------==')    
@@ -154,6 +168,9 @@ class hpssInspectUtil:
     # ____________________________________________________________________________
     def compareDuplicates(self):
         """Compare duplicates in collection with entries in picoDsts."""
+
+        if self._collHpssDuplicates.count() == 0:
+            return
 
         with open("toBeDeleted.txt", "w") as toBeDeleted:
 
@@ -190,19 +207,19 @@ def main():
     inspect.generalInfo()
 
     # -- Check if all files are still on HPSS
-#    inspect.inspector()
+    inspect.inspector()
 
     # -- Print Overview picoDsts
-#    inspect.printOverviewPicoDst()
+    inspect.printOverviewPicoDst()
 
     # -- Print Overview picoDsts - duplicates
-#    inspect.printOverviewDuplicates()
+    inspect.printOverviewDuplicates()
 
     # -- Print disinct fields
     inspect.printDistinct()
 
     # -- Compare duplicates in duplicate collection
-#    inspect.compareDuplicates()
+    inspect.compareDuplicates()
 
 
     dbUtil.close()
