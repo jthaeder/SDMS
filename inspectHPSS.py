@@ -36,11 +36,11 @@ class hpssInspectUtil:
                         4: 'starDetails.trigger', 5: 'starDetails.production'}
         self._fieldsExtra = {1: 'starDetails.day', 2: 'starDetails.runnumber', 3: 'starDetails.stream', 4: 'starDetails.picoType',
                              5: 'isInRunBak', 6: 'isInTarFile'}
-                        
+
     # _________________________________________________________
     def setCollections(self, collHpssFiles, collHpssPicoDsts, collHpssDuplicates):
         """Get collection from mongoDB."""
-        
+
         self._collHpssFiles      = collHpssFiles
         self._collHpssPicoDsts   = collHpssPicoDsts
         self._collHpssDuplicates = collHpssDuplicates
@@ -53,6 +53,9 @@ class hpssInspectUtil:
         print("    Number of documents:", self._collHpssFiles.count())
         print(">>>", self._collHpssPicoDsts)
         print("    Number of documents:", self._collHpssPicoDsts.count())
+
+        if self._collHpssDuplicates.count() == 0:
+            return
         print(">>>", self._collHpssDuplicates)
         print("    Number of documents:", self._collHpssDuplicates.count())
 
@@ -60,16 +63,16 @@ class hpssInspectUtil:
     def inspector(self):
         """Check if all files are still on HPSS."""
 
-        print('\n==---------------------------------------------------------==')    
+        print('\n==---------------------------------------------------------==')
         print('Inspector - check for files, changed within the last {0} days'.format(self._nDaysAgo))
-        print('==---------------------------------------------------------==')    
+        print('==---------------------------------------------------------==')
 
         nDaysAgo = (datetime.date.today() - datetime.timedelta(days=self._nDaysAgo)).strftime('%Y-%m-%d')
-        
+
         lostPicoDsts = list(self._collHpssFiles.find({'lastSeen': {"$lt" : nDaysAgo}}))
         if lostPicoDsts:
             print("These files (", len(lostPicoDsts),") have not been seen for the last", self._nDaysAgo,"days!")
-            
+
             for entry in lostPicoDsts:
                 print("  ", entry['fileFullPath'], "- last seen:", entry['lastSeen'])
 
@@ -77,10 +80,10 @@ class hpssInspectUtil:
     def printOverviewPicoDst(self):
         """Print overview of picoDsts."""
 
-        print('\n==---------------------------------------------------------==')    
+        print('\n==---------------------------------------------------------==')
         print('Collection:',  self._collHpssPicoDsts.name)
-        print('==---------------------------------------------------------==')    
-               
+        print('==---------------------------------------------------------==')
+
         self._printOverviewLevelPicoDst(self._collHpssPicoDsts, 1, {})
 
     # ____________________________________________________________________________
@@ -90,26 +93,26 @@ class hpssInspectUtil:
         if self._collHpssDuplicates.count() == 0:
             return
 
-        print('\n==---------------------------------------------------------==')    
+        print('\n==---------------------------------------------------------==')
         print('Collection:',  self._collHpssDuplicates.name)
-        print('==---------------------------------------------------------==')    
-               
+        print('==---------------------------------------------------------==')
+
         self._printOverviewLevelPicoDst(self._collHpssDuplicates, 1, {})
-  
+
     # ____________________________________________________________________________
     def _printOverviewLevelPicoDst(self, coll, level, queryOld):
         """ Print picoDst detqils recursivly for various depth."""
-        
+
         try:
             field = self._fields[level]
         except:
             return
-        
+
         for item in coll.distinct(field, queryOld):
             query = dict(queryOld)
             query[field] = item
             print ("    "*level, item, " -> ", coll.find(query).count())
-            
+
             self._printOverviewLevelPicoDst(coll, level+1, query)
 
 
@@ -117,15 +120,15 @@ class hpssInspectUtil:
     def printDistinct(self):
         """Print list of distict values in fields."""
 
-        print('\n==---------------------------------------------------------==')    
+        print('\n==---------------------------------------------------------==')
         print('Collection:',  self._collHpssFiles.name)
-        print('==---------------------------------------------------------==')    
-               
+        print('==---------------------------------------------------------==')
+
         self._printListOfUniqEntries(self._collHpssFiles, 'fileType')
 
-        print('\n==---------------------------------------------------------==')    
+        print('\n==---------------------------------------------------------==')
         print('Collection:',  self._collHpssPicoDsts.name)
-        print('==---------------------------------------------------------==')    
+        print('==---------------------------------------------------------==')
 
         for key, value in self._fields.items():
             self._printListOfUniqEntries(self._collHpssPicoDsts, value)
@@ -136,16 +139,16 @@ class hpssInspectUtil:
                 print ('        ', sorted(self._collHpssPicoDsts.distinct(value)))
             elif key >= 3:
                 self._printListOfUniqEntries(self._collHpssPicoDsts, value)
-                    
+
         print(list( self._collHpssPicoDsts.find({'isInRunBak': True})))
 
 
         if self._collHpssDuplicates.count() == 0:
             return
-                
-        print('\n==---------------------------------------------------------==')    
+
+        print('\n==---------------------------------------------------------==')
         print('Collection:',  self._collHpssDuplicates.name)
-        print('==---------------------------------------------------------==')    
+        print('==---------------------------------------------------------==')
 
         for key, value in self._fields.items():
             self._printListOfUniqEntries(self._collHpssDuplicates, value)
@@ -177,9 +180,9 @@ class hpssInspectUtil:
             for duplicate in self._collHpssDuplicates.find({}):
                 if duplicate['isInTarFile'] == True or duplicate['isInRunBak'] == False:
                     continue
-                
+
                 orig = self._collHpssPicoDsts.find_one({'filePath': duplicate['filePath']})
-                
+
                 if orig['fileSize'] != duplicate['fileSize']:
                     print('Is NOT equal: orig {0} - duplicate {1} : {2}'.format(orig['fileSize'],duplicate['fileSize'], duplicate['filePath']))
 #                    print(duplicate['fileFullPath'], file=toBeDeleted)
