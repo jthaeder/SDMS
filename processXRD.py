@@ -156,14 +156,18 @@ class processXRD:
             # -- Check if HPSS doc exists
             #    - if not move new document to extra collection : NoHPSS
             if not hpssDoc:
-                self._collsXRDNoHPSS[target].insert(xrdDocNew)
-                self._collsXRDNew[target].delete_one({xrdDocNew['_id']})
+                try:
+                    self._collsXRDNoHPSS[target].insert(xrdDocNew)
+                except:
+                    pass
+
+                self._collsXRDNew[target].delete_one({'_id': xrdDocNew['_id']})
                 continue
 
             # -- Create new document
             doc = {'starDetails': hpssDoc['starDetails'],
                    'target': hpssDoc['target'],
-                   'fileSize': int(hpssDoc['fileSize']),
+                   'fileSize': hpssDoc['fileSize'],
                    'filePath': hpssDoc['filePath'],
                    'fileFullPath': xrdDocNew['fileFullPath'],
                    'storage' : {'location':'XRD', 'details': list(nodeSet), 'nCopies': len(nodeSet)}
@@ -186,7 +190,7 @@ class processXRD:
                 # -- All are equal and equal to HPSS
                 #    - insert document in collection
                 #    - remove documents form new collection
-                if int(hpssDoc['fileSize']) == xrdDocNew['fileSize']:
+                if hpssDoc['fileSize'] == xrdDocNew['fileSize']:
                     self._collsXRD[target].insert(doc)
                     self._collsXRDNew[target].delete_many({'storage.location': 'XRD',
                                                            'target': target,
@@ -211,7 +215,7 @@ class processXRD:
                 # -- Equal to HPSS
                 #    - insert document in collection
                 #    - remove documents form new collection
-                if int(hpssDoc['fileSize']) == xrdDocNew['fileSize']:
+                if hpssDoc['fileSize'] == xrdDocNew['fileSize']:
                     self._collsXRD[target].insert(doc)
                     self._collsXRDNew[target].delete_one({xrdDocNew['_id']})
                     continue
@@ -285,16 +289,16 @@ class processXRD:
     def _processMissBrokenLinks(self, target):
         """Move broken links in new collection"""
 
-            xrdDocs = self._collsXRDMiss[target].find({'storage.location': 'XRD',
-                                                        'target': target,
-                                                        'xxx': "brokenLink"})
+        xrdDocs = self._collsXRDMiss[target].find({'storage.location': 'XRD',
+                                                   'target': target,
+                                                   'issue': 'brokenLink'})
 
-            self._collsXRDNoLink[target].insert_many(xrdDocs)
+        self._collsXRDNoLink[target].insert_many(xrdDocs)
 
-            self._collsXRDMiss[target].delete_many({'storage.location': 'XRD',
-                                                        'target': target,
-                                                        'xxx': "brokenLink"})
-)
+        self._collsXRDMiss[target].delete_many({'storage.location': 'XRD',
+                                                'target': target,
+                                                'issue': 'brokenLink'})
+
 
 # ____________________________________________________________________________
 def main():
