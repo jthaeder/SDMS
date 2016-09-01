@@ -293,7 +293,7 @@ class hpssUtil:
                 if  lineTokenized[2] == 'D':
                     # Is deleted in tarfile
                     continue
-                else
+                else: 
                     print("Error tokenizing hTar line:", lineTokenized)
                     continue
 
