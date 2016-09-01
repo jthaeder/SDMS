@@ -288,6 +288,15 @@ class hpssUtil:
                 print("Error tokenizing hTar line:", lineTokenized)
                 continue
 
+            # -- Check if file is marked as deleted in Tar file
+            elif len(lineTokenized) > 7:
+                if  lineTokenized[2] == 'D':
+                    # Is deleted in tarfile
+                    continue
+                else
+                    print("Error tokenizing hTar line:", lineTokenized)
+                    continue
+
             fileFullPath  = lineTokenized[6]
             fileSize      = int(lineTokenized[3])
 
