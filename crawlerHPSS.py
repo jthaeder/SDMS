@@ -319,8 +319,7 @@ class hpssUtil:
                'fileSize':     fileSize,
                'target':       self._target,
                'isInTarFile':  isInTarFile,
-               'staging':      { 'stageMarkerXRD': False},
-               'isInRunBak':   False
+               'staging':      {'stageMarkerXRD': False},
             }
 
         if isInTarFile:
@@ -335,14 +334,6 @@ class hpssUtil:
         # -- Create STAR details sub document
         docStarDetails = dict([(keys[0], self._typeMap[keys[1]](value))
                                for keys, value in zip(typedPathKeys, cleanPathTokenized)])
-
-        # -- remove ".bak" from runyear and _id / fileType (for the uniqueness of the picoDst)
-        if '.' in docStarDetails['runyear']:
-            splitRunYear = docStarDetails['runyear'].split('.')
-            docStarDetails['runyear'] = splitRunYear[0]
-            bakString = ".{0}".format(splitRunYear[1])
-            doc['filePath'] = doc['filePath'].replace(bakString, '')
-            doc['isInRunBak'] = True
 
         # -- Create a regex pattern to get the stream from the fileName
         regexStream = re.compile('(st_.*)_{}'.format(docStarDetails.get('runnumber', '')))
@@ -367,7 +358,6 @@ class hpssUtil:
 
         # -- return picoDst document
         return doc
-
 
     # _________________________________________________________
     def _insertPicoDsts(self, listDocs):

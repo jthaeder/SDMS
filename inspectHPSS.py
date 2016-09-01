@@ -35,7 +35,7 @@ class hpssInspectUtil:
         self._fields = {1: 'starDetails.runyear', 2: 'starDetails.energy', 3: 'starDetails.system',
                         4: 'starDetails.trigger', 5: 'starDetails.production'}
         self._fieldsExtra = {1: 'starDetails.day', 2: 'starDetails.runnumber', 3: 'starDetails.stream', 4: 'starDetails.picoType',
-                             5: 'isInRunBak', 6: 'isInTarFile'}
+                             5: 'isInTarFile'}
 
     # _________________________________________________________
     def setCollections(self, collHpssFiles, collHpssPicoDsts, collHpssDuplicates):
@@ -140,9 +140,6 @@ class hpssInspectUtil:
             elif key >= 3:
                 self._printListOfUniqEntries(self._collHpssPicoDsts, value)
 
-        print(list( self._collHpssPicoDsts.find({'isInRunBak': True})))
-
-
         if self._collHpssDuplicates.count() == 0:
             return
 
@@ -178,7 +175,7 @@ class hpssInspectUtil:
         with open("toBeDeleted.txt", "w") as toBeDeleted:
 
             for duplicate in self._collHpssDuplicates.find({}):
-                if duplicate['isInTarFile'] == True or duplicate['isInRunBak'] == False:
+                if duplicate['isInTarFile'] == True:
                     continue
 
                 orig = self._collHpssPicoDsts.find_one({'filePath': duplicate['filePath']})
