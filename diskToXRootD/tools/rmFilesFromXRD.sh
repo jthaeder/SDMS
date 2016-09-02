@@ -15,6 +15,11 @@
 #      /export/data/xrd/ns/star/reco/ppProductionMB62/....1060005.MuDst.root
 #      /export/data/xrd/ns/star/reco/ppProductionMB62/....1020001.MuDst.root
 #      ....
+#
+# - Run in CHOS sl62
+#    $  basedir=/global/homes/j/jthaeder/SDMS/diskToXRootD
+#    $  ${basedir}/runInCHOS.sh ${basedir}/tools/rmFilesFromXRD.sh 
+#
 #     
 # Author: Jochen Thaeder                                           
 
