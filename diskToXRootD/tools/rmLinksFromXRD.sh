@@ -64,7 +64,12 @@ while read -r line ; do
 	pathX=`echo $line | awk -F'"' '{ print $2 }'`
 	path=$pathX
     fi
-    
+
+    echo $node | grep '\-ib' > /dev/null 
+    if [ $? -ne 0 ] ; then
+	node="${node}-ib"
+    fi
+
     echo $path $node
     ssh -q $node "rm -f $path" < /dev/null
 
