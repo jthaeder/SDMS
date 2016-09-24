@@ -53,18 +53,16 @@ class crawlerXRD:
         self._today = datetime.datetime.today().strftime('%Y-%m-%d')
         self._nodeName = socket.getfqdn().split('.')[0]
 
-        self._listOfTargets = ['picoDst', 'picoDstJet', 'reco', 'aschmah']
+        self._listOfTargets = ['picoDst', 'picoDstJet', 'aschmah']
 
         self._baseFolders = {'picoDst': 'picodsts',
                              'picoDstJet': 'picodsts/JetPicoDsts',
-                             'aschmah': 'picodsts/aschmah',
-                             'reco': 'reco'}
+                             'aschmah': 'picodsts/aschmah'}
 
         # -- base Collection Names
         self._baseColl = {'picoDst': 'PicoDsts',
                           'picoDstJet': 'PicoDstsJets',
-                          'aschmah': 'ASchmah',
-                          'reco': 'Reco'}
+                          'aschmah': 'ASchmah'}
 
         self._addCollections(dbUtil)
 
@@ -209,7 +207,6 @@ def main():
     # -- process different targets
     xrd.process('picoDst')
     xrd.process('picoDstJet')
-    xrd.process('reco')
     xrd.process('aschmah')
 
     # -- Update data server DB

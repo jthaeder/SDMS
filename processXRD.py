@@ -52,15 +52,14 @@ class processXRD:
     def __init__(self, dbUtil):
         self._today = datetime.datetime.today().strftime('%Y-%m-%d')
 
-        self._listOfTargets = ['picoDst', 'picoDstJet', 'reco', 'aschmah']
+        self._listOfTargets = ['picoDst', 'picoDstJet', 'aschmah']
 
         # -- base Collection Names
         self._baseStorage = ['XRD', 'HPSS']
 
         self._baseColl = {'picoDst': 'PicoDsts',
                           'picoDstJet': 'PicoDstsJets',
-                          'aschmah': 'ASchmah',
-                          'reco': 'Reco'}
+                          'aschmah': 'ASchmah'}
 
         self._addCollections(dbUtil)
 
