@@ -8,11 +8,20 @@ echo " "
 date
 echo " "
 
-###############################
-
+#####################################################
 # -- Source Environemnt
 source /global/homes/j/jthaeder/bin/setbash.sh
 
+#####################################################
+# -- Check if CRON job is still running
+for pid in $(pidof -x `basename $0`); do
+    if [ $pid != $$ ]; then
+        echo "PProcess is already running with PID $pid"
+	exit 0                                                                 
+    fi
+done
+
+#####################################################
 
 pushd /global/homes/j/jthaeder/SDMS > /dev/null
 
