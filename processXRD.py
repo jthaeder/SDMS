@@ -129,7 +129,7 @@ class processXRD:
                 #    - if not move new document to extra collection : Corrupt
                 if existDoc['fileSize'] != xrdDocNew['fileSize']:
                     self._collsXRDCorrupt[target].insert(xrdDocNew)
-                    self._collsXRDNew[target].delete_one({xrdDocNew['_id']})
+                    self._collsXRDNew[target].delete_one({'_id': xrdDocNew['_id']})
                     continue
 
                 # -- Update existing document
@@ -216,7 +216,7 @@ class processXRD:
                 #    - remove documents form new collection
                 if hpssDoc['fileSize'] == xrdDocNew['fileSize']:
                     self._collsXRD[target].insert(doc)
-                    self._collsXRDNew[target].delete_one({xrdDocNew['_id']})
+                    self._collsXRDNew[target].delete_one({'_id': xrdDocNew['_id']})
                     continue
 
                 # -- Not equal to HPSS
@@ -224,7 +224,7 @@ class processXRD:
                 #    - remove documents form new collection
                 else:
                     self._collsXRDCorrupt[target].insert(xrdDocNew)
-                    self._collsXRDNew[target].delete_one({xrdDocNew['_id']})
+                    self._collsXRDNew[target].delete_one({'_id': xrdDocNew['_id']})
                     continue
 
     # _________________________________________________________
@@ -261,12 +261,12 @@ class processXRD:
             #    - remove it from list dependend on cases
             if not existDoc:
                 print("Doc not even in list", xrdDocMiss['filePath'])
-                self._collsXRDMiss[target].delete_one({xrdDocMiss['_id']})
+                self._collsXRDMiss[target].delete_one({'_id': xrdDocMiss['_id']})
                 continue
 
             # -- Remove entry if only one copy
             if existDoc['storage']['nCopies'] == 1:
-                self._collsXRD[target].delete_one({existDoc['_id']})
+                self._collsXRD[target].delete_one({'_id': existDoc['_id']})
 
             # -- Remove one storge detail
             else:
@@ -281,7 +281,7 @@ class processXRD:
                                                                      'storage.details': list(detailsSet)}})
 
             # -- Remove from list of missing
-            self._collsXRDMiss[target].delete_one({xrdDocMiss['_id']})
+            self._collsXRDMiss[target].delete_one({'_id': xrdDocMiss['_id']})
 
 
     # _________________________________________________________
