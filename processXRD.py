@@ -200,7 +200,11 @@ class processXRD:
                 #    - move new documents to extra list
                 #    - remove documents form new collection
                 else:
-                    self._collsXRDCorrupt[target].insert_many(xrdDocs)
+                    try:
+                        self._collsXRDCorrupt[target].insert_many(xrdDocs)
+                    except:
+                        pass
+                        
                     self._collsXRDNew[target].delete_many({'storage.location': 'XRD',
                                                            'target': target,
                                                            'filePath': xrdDocNew['filePath']})
@@ -223,7 +227,11 @@ class processXRD:
                 #    - move new documents to extra list
                 #    - remove documents form new collection
                 else:
-                    self._collsXRDCorrupt[target].insert(xrdDocNew)
+                    try:
+                        self._collsXRDCorrupt[target].insert(xrdDocNew)
+                    except:
+                        pass
+
                     self._collsXRDNew[target].delete_one({'_id': xrdDocNew['_id']})
                     continue
 
