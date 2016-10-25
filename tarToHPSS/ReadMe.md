@@ -36,7 +36,7 @@ hpssBaseDir=/nersc/projects/starofl/picodsts
 
 ##### Output
 * All log files of the jobs will be in a `log.<run>` folder.
-* `tar_done_Run14.list` and `tar_done_Run14.list.fail` are created and filled by `tarToHPSS.csh` according to success of HTAR operation.
+* `tar_done_<run>.list` and `tar_done_<run>.list.fail` are created and filled by `tarToHPSS.csh` according to success of HTAR operation.
 
 #### checkStoredFiles.sh
 After all backup jobs have been finished, run this script to check if all have been successfully backup'ed.
@@ -47,7 +47,7 @@ For Selection of dataset and the folders, see above at *submitTarJobs.sh*
 
 #### tarToHPSS.csh
 Executes actual `HTAR` command.
-Fills `tar_done_Run14.list` and `tar_done_Run14.list.fail` according to success of HTAR operation.
+Fills `tar_done_<run>.list` and `tar_done_<run>.list.fail` according to success of HTAR operation.
 
 ### Installation
 
