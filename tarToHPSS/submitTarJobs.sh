@@ -5,7 +5,7 @@
 #
 # Author: Jochen Thaeder
 
-basePath=/global/homes/j/jthaeder/SDMS/tarToHPSS
+basePath=/global/homes/s/starofl/SDMS/tarToHPSS
 projectBaseDir=/project/projectdirs/starprod/picodsts
 hpssBaseDir=/nersc/projects/starofl/picodsts
 
@@ -21,7 +21,7 @@ production="200GeV/physics2/P15ic"
 
 pushd ${projectBaseDir} > /dev/null
 
-for run in $runs ; do 
+for run in $runs ; do
 
     # -- create log folder
     if [ -d ${basePath}/log.${run} ] ; then
@@ -44,7 +44,7 @@ for run in $runs ; do
 	    continue
 	fi
 
-	# -- pick proper production 
+	# -- pick proper production
 	echo $folder | grep -v ${production} > /dev/null
 	if [ $? -eq 0 ] ; then
 	    continue
@@ -58,14 +58,14 @@ for run in $runs ; do
 	tarFile=${day}.tar
 	tarFolder=${hpssBaseDir}/${folder}
 	projectFolder=${projectBaseDir}/${line}
-	
+
 	options="-l starhpssio=1,h_cpu=24:00:00 -j y -o ${logFolder}/job.${day}.out"
 	executable="${basePath}/tarToHPSS.csh"
 	args="${tarFolder} ${tarFile} ${projectFolder} ${doneFile}"
-	
+
 	# -- submit jobs
 	qsub ${options} ${executable} ${args}
-	
+
     done < <(find ${run} -mindepth 5 -maxdepth 5 -type d)
 done
 
