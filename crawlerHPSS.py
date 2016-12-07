@@ -5,48 +5,7 @@ b'This script requires python 3.4'
 Crawler which runs over all HPSS picoDST folder for now and populates
 mongoDB collections.
 
-HPSSFiles: Is a collection of all files within those folders
--> This is the true represetation on what is on tape.
-Every time the crawler runs, it updates the lastSeen field
-
-unique index is: fileFullPath
-
-fileType can be: tar, idx, picoDst, other
-
-This is a typical document:
-{'_id': ObjectId('5723e67af157a6a310232458'),
- 'fileSize': '13538711552',
- 'fileType': 'tar',
- 'filesInTar': 23,
- 'fileFullPath': '/nersc/projects/starofl/picodsts/Run10/AuAu/11GeV/all/P10ih/148.tar',
-  'lastSeen': '2016-04-29'}
-
-HPSSPicoDsts: Is a collection of all picoDsts stored on HPSS,
--> Every picoDst should show up only once. Duplicate entries are caught seperatly (see below)
-
-unique index is: filePath
-
-This is a typical document:
-{'_id': 'Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root',
- 'filePath': 'Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root',
- 'fileSize': '5103599',
- 'fileFullPath': '/project/projectdirs/starprod/picodsts/Run10/AuAu/11GeV/all/P10ih/149/11149081/st_physics_adc_11149081_raw_2520001.picoDst.root',
- 'target': 'picoDst',
- 'isInTarFile': True,
- 'fileFullPathTar': '/nersc/projects/starofl/picodsts/Run10/AuAu/11GeV/all/P10ih/149.tar',
- 'starDetails': {'runyear': 'Run10',
-                 'system': 'AuAu',
-                 'energy': '11GeV',
-                 'trigger': 'all',
-                 'production': 'P10ih',
-                 'day': 149,
-                 'runnumber': 11149081,
-                 'stream': 'st_physics_adc',
-                 'picoType': 'raw'},
- 'staging': {'stageMarkerXRD': False}}
-
-HPSSDuplicates: Collection of duplicted picoDsts on HPSS
-
+For detailed documentation, see: README_CrawlerHPSS.md
 """
 
 import sys
@@ -293,7 +252,7 @@ class hpssUtil:
                 if  lineTokenized[2] == 'D':
                     # Is deleted in tarfile
                     continue
-                else: 
+                else:
                     print("Error tokenizing hTar line:", lineTokenized)
                     continue
 
