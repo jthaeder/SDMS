@@ -171,15 +171,20 @@ class hpssUtil:
                                                                        '$setOnInsert' : doc},
                                                                        upsert = True)
 
-                        # -- document already there do nothing
+                        # -- document already there - do nothing
                         if ret:
                             continue
 
                         # -- new document inserted - add the picoDst(s)
                         if doc['fileType'] == "tar":
+                            # -- get picoDsts within tar files
                             nDocsInTar = self._parseTarFile(doc)
-                            self._collHpssFiles.find_one_and_update({'fileFullPath': doc['fileFullPath']},
-                                                                    {'$set': {'filesInTar': nDocsInTar}})
+                            if nDocsInTar == -1:
+                                print("Error: reading tar file {0} - fix manually, file has \
+                                       not been added to HPSS_Files collection.".format(doc['fileFullPath']))
+                            else:
+                                self._collHpssFiles.find_one_and_update({'fileFullPath': doc['fileFullPath']},
+                                                                        {'$set': {'filesInTar': nDocsInTar}})
                             continue
 
                         if doc['fileType'] == "picoDst":
@@ -220,7 +225,9 @@ class hpssUtil:
     def _parseTarFile(self, hpssDoc):
         """Get Content of tar file and parse it.
 
-           return a number of documents in Tar file
+           return
+                - number of documents in tar file
+                - -1 if error reading tar file
            """
 
         cmdLine = 'htar -tf {0}'.format(hpssDoc['fileFullPath'])
@@ -239,7 +246,7 @@ class hpssUtil:
 
             if 'ERROR: No such file: {0}.idx'.format(hpssDoc['fileFullPath']) == lineCleaned :
                 print('ERROR no IDX file ...', lineCleaned, '... recovering')
-                return
+                return -1
 
             lineTokenized = lineCleaned.split(' ', 7)
 
@@ -338,8 +345,6 @@ class hpssUtil:
         # -- Empty list
         if not listDocs:
             return
-
-#        print("Insert List: Try to add {0} picoDsts".format(len(listDocs)))
 
         # -- Clean listDocs with duplicate entries and move them on extra list: listDuplicates
         listDuplicates = []
