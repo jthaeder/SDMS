@@ -2,13 +2,11 @@
 
 Scripts to crawl over HPSS and fill mongoDB collections. A sub-module of the SDMS suite.
 
----
-
 ## MongoDB collections
 
 ### HPSS_Files
 A collection of all files within those HPSS folders.  
-**This is the true representation on what is on tape.**  
+**This is the truth representation on what is on tape.**  
 Every time the crawler runs, it updates the lastSeen field
 
 #### A document
@@ -21,9 +19,9 @@ Every time the crawler runs, it updates the lastSeen field
  'lastSeen': '2016-04-29'}
 ```
 
-* `fileSize`: *size of file in bytes*
+* `fileSize`: *size of file in bytes* - **(`NumberLong`)**
 * `fileType`: `tar, idx, picoDst, other`
-* `filesInTar`: *if `fileType` is tar file, number of picoDsts in file*
+* `filesInTar`: *exists if `fileType` is tar file, number of picoDsts in file* **(`NumberInt`)**
 * `fileFullPath`: *full path of file in HPSS* - **Unique index**
 * `lastSeen`: *last time seen*
 
@@ -53,31 +51,68 @@ A collection of all picoDsts stored on HPSS. Either as direct file or inside a t
 ```
 
 * `_id` and `filePath`: *relativ path to picoDst file* - **Unique indices**
-* `fileSize`: *size of picoDst file in bytes*
+* `fileSize`: *size of picoDst file in bytes* - **(`NumberInt`)**
 * `fileFullPath`: *full path of picoDst (from disk)* - **REALLY USED?????**
-*  `target`: `'picoDst'``
+*  `target`: `'picoDst'` *target file types*  
 *  `isInTarFile`: `boolean` *if picoDsts is inside a tar file*
 *  '`fileFullPathTar`: *if picoDsts is inside a tar file, the full path of the tar file in HPSS*
 * `starDetails`: **sub document:** *keywords to identify picoDst file, parsed from file path*  
-  * `runyear`, `system`, `energy`, `trigger`,  `production`, `day`, `runnumber`, `stream`, `picoType`
+  * `runyear`, `system`, `energy`, `trigger`,  `production`, `day` **(`NumberInt`)**, `runnumber`, `stream`, `picoType`
 * `staging`:  **sub document:** *list of boolean stage marker for different stage location, e.g. XRD:*
   * `stageMarkerXRD`
 
 ### HPSS_Duplicates
 A collection of duplicated picoDsts on HPSS
 
-***Documents in the collection have to be treated manually!***
+***Documents in this collection have to be treated manually!***
 
 * PicoDst files can be deleted from HPSS for clean up if not in tar file.
 * Be careful while deleting.
-* If deleted files are whole tar file or single files, they will be indicated by a not updated `lastSeen` field in the `HPSS_Files` collection.
-* Those documents in in the `HPSS_Files` and in the `HPSS_Duplicates` can be deleted manually.
-
----
+* If deleted files are whole tar file or single files, they will be indicated
+  by a not updated `lastSeen` field in the **`HPSS_Files`** collection.
+* Those documents in in the **`HPSS_Files`** and in the **`HPSS_Duplicates`**
+  can be deleted manually.
 
 ## Components
 * crawlerHPSS.py      - *Daily script to crawl over HPSS files*
 * inspectHPSS.py      - *Daily script to check the filled mongoDB collections*
 
 #### crawlerHPSS.py
-Crawler which runs over all HPSS picoDST folder for now and populates mongoDB collections.
+Crawler which runs over all HPSS picoDST folders and populates mongoDB
+collections.
+
+#### Actions
+
+##### HPSS data consistency
+Script crawls over a part of the HPSS space (`HPSS_BASE_FOLDER`/`[PICO_FOLDERS]`,
+eg. `/nersc/projects/starofl/[picodsts,picoDST]`) and keeps a record of all files
+in the **`HPSS_Files`** collection. These records are checked every time the
+script runs and the `lastSeen` field gets updated to check HPSS data consistency.
+
+This uses the `hsi -q` command to access HPSS and an recursive `ls -lR` to
+minimize HPSS access. The output of these command are parsed line-by-line.  
+
+##### *Truth* basis of data files of type target
+All root files of the data type `target` (for now only `picoDst`) are also put
+into an extra *target collection* (**`HPSS_<target>s`**, eg. **`HPSS_PicoDsts`**).
+This collection builds the ***Truth*** basis for that data type. They are only
+added once, when a new file is added to **`HPSS_Files`**.
+
+Some files are tar files produced by `htar` and also contain root files. When a
+new tar file is found, the file is opened and listed once via `har -tf` and the
+output is parsed line-by-line. If an error occurs, the file is not added to
+**`HPSS_Files`** and it has to be looked at by hand (maybe idx file is missing
+or corrupt file). Otherwise, the contained root files of the data type `target`
+are added to the *target collection*.
+
+During the process of adding files to the *target collection*, it's relative path
+`filePath` is parsed using the `pathKeysSchema` retrieving the `starDetails` to
+identify the data set.
+
+The relative path `filePath` is a unique index of this collection. The below for
+handling of duplicates.
+
+##### Duplicates
+New data files to be added in the *target collection* which already exist, will
+be added to to the **`HPSS_Duplicates`** collection. Documents in this collection
+have to be treated manually!
