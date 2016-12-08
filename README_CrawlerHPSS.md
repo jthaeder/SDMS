@@ -77,7 +77,7 @@ A collection of duplicated picoDsts on HPSS
 * crawlerHPSS.py      - *Daily script to crawl over HPSS files*
 * inspectHPSS.py      - *Daily script to check the filled mongoDB collections*
 
-#### crawlerHPSS.py
+### crawlerHPSS.py
 Crawler which runs over all HPSS picoDST folders and populates mongoDB
 collections.
 
@@ -116,3 +116,34 @@ handling of duplicates.
 New data files to be added in the *target collection* which already exist, will
 be added to to the **`HPSS_Duplicates`** collection. Documents in this collection
 have to be treated manually!
+
+### inspectHPSS.py
+Checks the collections populated by `crawlerHPSS.py`. Several methods can be
+turned on or off.
+
+#### Methods
+All the methods below are for the collections **`HPSS_Files`** and **`HPSS_PicoDsts`**.
+The collection **`HPSS_Duplicates`** is only considered if it contains documents.
+
+* **`generalInfo()`**  
+  On **`HPSS_Files`**, **`HPSS_PicoDsts`**, (**`HPSS_Duplicates`**): Print general
+  info of collections.
+
+* **`inspector()`**  
+  On **`HPSS_Files`**: check if all files are still on HPSS. The field `lastSeen`
+  must younger then `N_DAYS_AGO = 14`.
+
+* **`printOverviewPicoDst()`**  
+  On **`HPSS_PicoDsts`**: print overview of picoDsts details recursively.
+
+* **`printOverviewDuplicates()`**  
+  On **`HPSS_Duplicates`**: print overview of duplicated picoDsts details
+  recursively.
+
+* **`printDistinct()`**  
+  On **`HPSS_Files`**, **`HPSS_PicoDsts`**, (**`HPSS_Duplicates`**): print lists
+  of distinct entries.
+
+* **`compareDuplicates()`**  
+  On **`HPSS_Duplicates`**: print comparison of duplicate entries with original
+  entries.
