@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 b'This script requires python 3.4'
 
-
 """
-Daily inspection of files on HPSS
+Daily inspection of collection HPSS_Files
 
-
+For detailed documentation, see: README_CrawlerHPSS.md
 """
 
 import sys
@@ -101,7 +100,7 @@ class hpssInspectUtil:
 
     # ____________________________________________________________________________
     def _printOverviewLevelPicoDst(self, coll, level, queryOld):
-        """ Print picoDst detqils recursivly for various depth."""
+        """ Print picoDst details recursively for various depth."""
 
         try:
             field = self._fields[level]
@@ -115,10 +114,9 @@ class hpssInspectUtil:
 
             self._printOverviewLevelPicoDst(coll, level+1, query)
 
-
     # ____________________________________________________________________________
     def printDistinct(self):
-        """Print list of distict values in fields."""
+        """Print list of distinct values in fields."""
 
         print('\n==---------------------------------------------------------==')
         print('Collection:',  self._collHpssFiles.name)
@@ -215,7 +213,7 @@ def main():
     # -- Print Overview picoDsts - duplicates
     inspect.printOverviewDuplicates()
 
-    # -- Print disinct fields
+    # -- Print distinct fields
     inspect.printDistinct()
 
     # -- Compare duplicates in duplicate collection
