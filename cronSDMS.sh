@@ -1,6 +1,15 @@
 #!/bin/bash
-
+#
 # run cron scripts
+#####################################################
+# Script to be called by daily cron.
+# Runs different suites for SDMS
+# ---------------------------------------------------
+# HPSS:
+#  - crawlerHPSS.py
+#  - inspectHPSS.py
+#
+#####################################################
 
 echo "START SDMS daily cron!"
 echo "-----------------------------------"
@@ -17,7 +26,7 @@ source /global/homes/j/jthaeder/bin/setbash.sh
 for pid in $(pidof -x `basename $0`); do
     if [ $pid != $$ ]; then
         echo "PProcess is already running with PID $pid"
-	exit 0                                                                 
+	exit 0
     fi
 done
 
