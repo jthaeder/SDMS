@@ -62,16 +62,18 @@ A collection of all picoDsts stored on HPSS. Either as direct file or inside a t
   * `stageMarkerXRD`
 
 ### HPSS_Duplicates
-A collection of duplicated picoDsts on HPSS
-
+A collection of duplicated picoDst files on HPSS  
 ***Documents in this collection have to be treated manually!***
 
-* PicoDst files can be deleted from HPSS for clean up if not in tar file.
-* Be careful while deleting.
-* If deleted files are whole tar file or single files, they will be indicated
-  by a not updated `lastSeen` field in the **`HPSS_Files`** collection.
-* Those documents in in the **`HPSS_Files`** and in the **`HPSS_Duplicates`**
-  can be deleted manually.
+* The duplicated picoDst files can be deleted from HPSS  
+  ***Be careful with deleting any files.***
+  * If they are not in a tar file - just delete them  
+  * If they are in a tar file - mark them as deleted them via `htar -Df`
+* The corresponding documents in the collection **`HPSS_Duplicates`** have to be
+  deleted manually.
+* If the deleted files are whole tar files or single files, they will be indicated
+  by a non updated `lastSeen` field in the **`HPSS_Files`** collection.
+  * Those documents in the **`HPSS_Files`** collection have to be deleted manually.
 
 ## Components
 * crawlerHPSS.py      - *Daily script to crawl over HPSS files*
