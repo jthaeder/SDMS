@@ -2,9 +2,10 @@
 b'This script requires python 3.4'
 
 """
-bla
+Crawler which runs daily on all data server nodes and inspects the XRD space.
+Findings are stored in mongoDB collections.
 
-
+For detailed documentation, see: README_CrawlerXRD.md
 """
 
 import sys
@@ -53,13 +54,15 @@ class crawlerXRD:
         self._today = datetime.datetime.today().strftime('%Y-%m-%d')
         self._nodeName = socket.getfqdn().split('.')[0]
 
+        # -- possible targets
         self._listOfTargets = ['picoDst', 'picoDstJet', 'aschmah']
 
+        # -- Base folders for targets
         self._baseFolders = {'picoDst': 'picodsts',
                              'picoDstJet': 'picodsts/JetPicoDsts',
                              'aschmah': 'picodsts/aschmah'}
 
-        # -- base Collection Names
+        # -- Base collection names for targets
         self._baseColl = {'picoDst': 'PicoDsts',
                           'picoDstJet': 'PicoDstsJets',
                           'aschmah': 'ASchmah'}
@@ -160,7 +163,6 @@ class crawlerXRD:
         if listOfFilesOnNode:
             self._collsMiss[target].insert_many(listOfFilesOnNode, ordered=False)
 
-
     # _________________________________________________________
     def updateServerInfo(self):
         """update info Server"""
@@ -192,7 +194,7 @@ class crawlerXRD:
                                                  {'$set': {'freeSpace': free,
                                                            'usedSpace': used,
                                                            'totalSpace': total,
-                                                           'lastWalkerRun': self._today},
+                                                           'lastCrawlerRun': self._today},
                                                   '$setOnInsert' : doc}, upsert = True)
 
 # ____________________________________________________________________________
