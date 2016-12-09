@@ -4,7 +4,7 @@ Scripts to crawl over HPSS and fill mongoDB collections. A sub-module of the SDM
 
 ## MongoDB collections
 
-### HPSS_Files
+### **`HPSS_Files`**
 A collection of all files within those HPSS folders.  
 **This is the truth representation on what is on tape.**  
 Every time the crawler runs, it updates the lastSeen field
@@ -23,9 +23,9 @@ Every time the crawler runs, it updates the lastSeen field
 * `fileType`: `tar, idx, picoDst, other`
 * `filesInTar`: *exists if `fileType` is tar file, number of picoDsts in file* **(`NumberInt`)**
 * `fileFullPath`: *full path of file in HPSS* - **Unique index**
-* `lastSeen`: *last time seen*
+* `lastSeen`: *last time seen YYYY-MM-DD*
 
-### HPSS_PicoDsts
+### **`HPSS_PicoDsts`**
 A collection of all picoDsts stored on HPSS. Either as direct file or inside a tar file.  
 *Every picoDst should show up only once. Duplicate entries are caught separately (see below)*
 
@@ -50,18 +50,18 @@ A collection of all picoDsts stored on HPSS. Either as direct file or inside a t
  'staging': {'stageMarkerXRD': False}}
 ```
 
-* `_id` and `filePath`: *relativ path to picoDst file* - **Unique indices**
+* `_id` and `filePath`: *relative path to picoDst file* - **Unique indices**
 * `fileSize`: *size of picoDst file in bytes* - **(`NumberInt`)**
 * `fileFullPath`: *full path of picoDst (from disk)* - **REALLY USED?????**
 *  `target`: `'picoDst'` *target file types*  
-*  `isInTarFile`: `boolean` *if picoDsts is inside a tar file*
+*  `isInTarFile`: *if picoDsts is inside a tar file* - **(`boolean`)**
 *  '`fileFullPathTar`: *if picoDsts is inside a tar file, the full path of the tar file in HPSS*
 * `starDetails`: **sub document:** *keywords to identify picoDst file, parsed from file path*  
   * `runyear`, `system`, `energy`, `trigger`,  `production`, `day` **(`NumberInt`)**, `runnumber`, `stream`, `picoType`
 * `staging`:  **sub document:** *list of boolean stage marker for different stage location, e.g. XRD:*
   * `stageMarkerXRD`
 
-### HPSS_Duplicates
+### **`HPSS_Duplicates`**
 A collection of duplicated picoDst files on HPSS  
 ***Documents in this collection have to be treated manually!***
 
