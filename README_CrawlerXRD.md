@@ -3,25 +3,7 @@
 Scripts to crawl over XRD on every data server and fill mongoDB collections.
 A sub-module of the SDMS suite.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+All scripts described here have to be executed as `starxrd` user.
 
 ## MongoDB collections
 
@@ -131,8 +113,10 @@ Information of all nodes in **`cluster.env`** file, updated daily
 * `lastSeen`: ***NEEDED ???***
 
 ## Components
-* crawlerXRD.py      - *Daily script run to run on data server node, crawling the XRD space*
-* dataServerCheck.py - *Daily script  ..*
+* `crawlerXRD.py`      - *Script to run on data server node, crawling the XRD space*
+* `crawlerXRD.sh`      - *Daily script (`CRON`) to run on data server node*
+
+* `dataServerCheck.py` - *Daily script  ..*
 
 ### crawlerXRD.py
 Crawler which runs daily on all data server nodes and inspects the XRD space.
@@ -142,7 +126,6 @@ Findings are stored in mongoDB collections.
 The files in the namespace are actually links with human readable names and
 folder structure. The actual data files are saved with cryptical filenames on
 different disks `DISK_LIST = ['data', 'data1', 'data2', 'data3', 'data4']`.
-
 
 Different `targets` can be processed: `['picoDst', 'picoDstJet', 'aschmah']`  
 Depending on the `target` different `baseFolders` and appropriate collection
@@ -191,6 +174,9 @@ After the crawl has been done, the information of the data server is collected
 and the entry for the node is updated
 
 Updated information:
-* `stateActive` - to `true` 
+* `stateActive` - to `true`
 * `totalSpace`, `usedSpace`, `freeSpace`:
 * `lastCrawlerRun`
+
+### crawlerXRD.sh
+Daily `CRON` script, executed locally on every server node. It calls `crawlerXRD.py`
