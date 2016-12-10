@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 module load python/3.4.3
 
