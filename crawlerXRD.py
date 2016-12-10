@@ -96,7 +96,7 @@ class crawlerXRD:
             return
 
         # -- Check for ongoing processing of last crawler run
-        if self._dbUtil.checkProcessLock("process_XRD_{0}".format(target))
+        if self._dbUtil.checkProcessLock("process_XRD_{0}".format(target)):
             print ("Postponed - XRD {0} data is currently processed".format(target))
             return
 
@@ -213,8 +213,8 @@ def main():
 
     # -- Process different targets
     xrd.process('picoDst')
-    xrd.process('picoDstJet')
-    xrd.process('aschmah')
+#    xrd.process('picoDstJet')
+#    xrd.process('aschmah')
 
     # -- Update data server DB
     xrd.updateServerInfo()
