@@ -1,8 +1,7 @@
 #!/bin/bash
 
-
 module load python/3.4.3
 
-source ~jthaeder/SDMS/setenv.sh
+source ~/bin/.setXRDMongoEnv.sh
 
-python ~jthaeder/SDMS/crawlerXRD.py
+python ~/SDMS/crawlerXRD.py
