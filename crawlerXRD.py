@@ -113,7 +113,7 @@ class crawlerXRD:
         if not os.path.isdir(self._workDir):
             # -- Add missing files to DB - if there are some
             if listOfFilesOnNode:
-                self._collsMiss[target].insert_many(listOfFilesOnNode, ordered=False)
+                self._insertMissingFilePaths(listOfFilesOnNode, target)
             return
 
         # -- Get list folders to walk on
@@ -145,7 +145,10 @@ class crawlerXRD:
                         fstat = os.stat(doc['fileFullPath'])
                     except OSError as e:
                         doc['issue'] = 'brokenLink'
-                        self._collsMiss[target].insert(doc)
+                        try:
+                            self._collsMiss[target].insert(doc)
+                        except:
+                            pass
                         continue
 
                     doc['fileSize'] = fstat.st_size
@@ -166,7 +169,26 @@ class crawlerXRD:
 
         # -- Add missing files to DB
         if listOfFilesOnNode:
-            self._collsMiss[target].insert_many(listOfFilesOnNode, ordered=False)
+            self._insertMissingFilePaths(listOfFilesOnNode, target)
+
+    # _________________________________________________________
+    def _insertMissingFilePaths(self, filePathList, target):
+        """insert list of filePaths to missing collection"""
+
+        for filePath in filePathList:
+            doc = {'fileFullPath': "",
+                'filePath': filePath,
+                'storage': {'location': 'XRD',
+                            'detail': self._nodeName,
+                            'disk': ''},
+                'target': target,
+                'fileSize': -1,
+                'issue': 'missing'}
+
+            try:
+                self._collsMiss[target].insert(doc)
+            except:
+                pass
 
     # _________________________________________________________
     def updateServerInfo(self):
