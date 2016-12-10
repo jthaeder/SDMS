@@ -97,7 +97,7 @@ class crawlerXRD:
 
         # -- Check for ongoing processing of last crawler run
         if self._dbUtil.checkProcessLock("process_XRD_{0}".format(target))
-            print ("Abort - Data is currently proceed")
+            print ("Postponed - XRD {0} data is currently processed".format(target))
             return
 
         # -- Get list of files stored on this node
