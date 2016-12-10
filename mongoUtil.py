@@ -2,7 +2,7 @@
 b'This script requires python 3.4'
 
 """
-Connect to NERSC mongoDB sever and returns handles to the 
+Connect to NERSC mongoDB sever and returns handles to the
 different collections
 
 
@@ -11,7 +11,7 @@ Author: Jochen Thaeder <jmthader@lbl.gov>
 
 import sys, os, datetime
 import pymongo
-from pymongo import MongoClient     
+from pymongo import MongoClient
 
 
 ##############################################
@@ -52,13 +52,13 @@ class mongoDbUtil:
         else:
             self.user = READONLY_USER
             self.password = os.getenv('STAR_XROOTD_ro', 'empty')
-            
+
         if self.password == 'empty':
             print("Password for user {0} at database {1} has not been supplied".format(self.user, MONGO_DB_NAME))
             sys.exit(-1)
 
         self.today = datetime.datetime.today().strftime('%Y-%m-%d')
-        
+
         # -- Connect
         self._connectDB()
 
@@ -66,7 +66,7 @@ class mongoDbUtil:
     def _connectDB(self):
         """Connect to the NERSC mongoDB using pymongo."""
 
-        self.client = MongoClient('mongodb://{0}:{1}@{2}/{3}'.format(self.user, self.password, 
+        self.client = MongoClient('mongodb://{0}:{1}@{2}/{3}'.format(self.user, self.password,
                                                                      MONGO_SERVER, MONGO_DB_NAME))
         self.db = self.client[MONGO_DB_NAME]
 #        print ("Existing collections:", self.db.collection_names(include_system_collections = False))
@@ -89,7 +89,7 @@ class mongoDbUtil:
             #print ("Warning: Collection", collectionName, "not known. Index not created.")
             pass
 
-            
+
         return collection
 
     # _________________________________________________________
@@ -98,6 +98,27 @@ class mongoDbUtil:
 
         self.db[collectionName].drop()
 
+    # _________________________________________________________
+    def checkProcessLock(self, fieldName):
+        """Check process lock."""
+
+        collLock = self.getCollection("Process_Locks")
+        docLock = collLock.find_one({'unique': 'unique'})
+        if not docLock:
+            print("doc not there")
+            return False
+
+        if not docLock[fieldName]:
+            print("field not there")
+            return False
+
+        if docLock[fieldName] == True:
+            print("lock active")
+        else:
+            print ("lock inactive")
+
+        return docLock[fieldName]
+        
 # ----------------------------------------------------------------------------------
 
 # ____________________________________________________________________________
@@ -111,5 +132,5 @@ def main():
 
 if __name__ == "__main__":
     """Call main."""
-    
+
     sys.exit(main())

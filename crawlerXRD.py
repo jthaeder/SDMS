@@ -67,10 +67,11 @@ class crawlerXRD:
                           'picoDstJet': 'PicoDstsJets',
                           'aschmah': 'ASchmah'}
 
-        self._addCollections(dbUtil)
+        self._dbUtil = dbUtil
+        self._addCollections()
 
     # _________________________________________________________
-    def _addCollections(self, dbUtil):
+    def _addCollections(self):
         """Get collections from mongoDB."""
 
         self._colls     = dict.fromkeys(self._listOfTargets)
@@ -78,11 +79,11 @@ class crawlerXRD:
         self._collsMiss = dict.fromkeys(self._listOfTargets)
 
         for target in self._listOfTargets:
-            self._colls[target]     = dbUtil.getCollection('XRD_' + self._baseColl[target])
-            self._collsNew[target]  = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_new')
-            self._collsMiss[target] = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_miss')
+            self._colls[target]     = self._dbUtil.getCollection('XRD_' + self._baseColl[target])
+            self._collsNew[target]  = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_new')
+            self._collsMiss[target] = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_miss')
 
-        self._collDataServer = dbUtil.getCollection("XRD_DataServers")
+        self._collDataServer = self._dbUtil.getCollection("XRD_DataServers")
 
     # _________________________________________________________
     def process(self, target):
@@ -94,13 +95,17 @@ class crawlerXRD:
             print('Unknown "target"', target, 'for processing')
             return
 
+        # -- Check for ongoing processing of last crawler run
+        if self._dbUtil.checkProcessLock("process_XRD_{0}".format(target))
+            print ("Abort - Data is currently proceed")
+            return
+
         # -- Get list of files stored on this node
         listOfFilesOnNode = list(item['filePath']
                                  for item in self._colls[target].find({'target': target,
                                                                        'storage.location': 'XRD',
                                                                        'storage.details': self._nodeName},
                                                                       {'filePath': True, '_id': False}))
-
         # -- Get working directoty
         self._workDir = os.path.join(XROOTD_PREFIX, self._baseFolders[target])
 
@@ -206,7 +211,7 @@ def main():
 
     xrd = crawlerXRD(dbUtil)
 
-    # -- process different targets
+    # -- Process different targets
     xrd.process('picoDst')
     xrd.process('picoDstJet')
     xrd.process('aschmah')
