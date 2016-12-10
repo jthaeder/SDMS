@@ -76,8 +76,8 @@ A collection of duplicated picoDst files on HPSS
   * Those documents in the **`HPSS_Files`** collection have to be deleted manually.
 
 ## Components
-* crawlerHPSS.py      - *Daily script to crawl over HPSS files*
-* inspectHPSS.py      - *Daily script to check the filled mongoDB collections*
+* `crawlerHPSS.py`      - *Daily script to crawl over HPSS files*
+* `inspectHPSS.py`      - *Daily script to check the filled mongoDB collections*
 
 ### crawlerHPSS.py
 Crawler which runs over all HPSS picoDST folders and populates mongoDB
