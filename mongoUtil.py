@@ -105,17 +105,10 @@ class mongoDbUtil:
         collLock = self.getCollection("Process_Locks")
         docLock = collLock.find_one({'unique': 'unique'})
         if not docLock:
-            print("doc not there")
             return False
-
-        if not docLock[fieldName]:
-            print("field not there")
+        
+        if not fieldName in docLock.keys():
             return False
-
-        if docLock[fieldName] == True:
-            print("lock active")
-        else:
-            print ("lock inactive")
 
         return docLock[fieldName]
         
