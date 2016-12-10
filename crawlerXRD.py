@@ -145,10 +145,7 @@ class crawlerXRD:
                         fstat = os.stat(doc['fileFullPath'])
                     except OSError as e:
                         doc['issue'] = 'brokenLink'
-                        try:
-                            self._collsMiss[target].insert(doc)
-                        except:
-                            pass
+                        self._collsMiss[target].insert(doc)
                         continue
 
                     doc['fileSize'] = fstat.st_size
@@ -185,10 +182,7 @@ class crawlerXRD:
                 'fileSize': -1,
                 'issue': 'missing'}
 
-            try:
-                self._collsMiss[target].insert(doc)
-            except:
-                pass
+            self._collsMiss[target].insert(doc)
 
     # _________________________________________________________
     def updateServerInfo(self):
