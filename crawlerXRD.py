@@ -81,7 +81,7 @@ class crawlerXRD:
         for target in self._listOfTargets:
             self._colls[target]     = self._dbUtil.getCollection('XRD_' + self._baseColl[target])
             self._collsNew[target]  = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_new')
-            self._collsMiss[target] = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_miss')
+            self._collsMiss[target] = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_missing')
 
         self._collDataServer = self._dbUtil.getCollection("XRD_DataServers")
 

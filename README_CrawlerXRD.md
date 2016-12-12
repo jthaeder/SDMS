@@ -68,8 +68,8 @@ doc = {'fileFullPath': os.path.join(root, fileName),
        'fileSize': -1}
 ```
 
-### **`XRD_<baseColl[target]>_miss`**
-The collection for every target (eg. **`XRD_PicoDsts_miss`**) of files which are
+### **`XRD_<baseColl[target]>_missing`**
+The collection for every target (eg. **`XRD_PicoDsts_missing`**) of files which are
 supposed to be on the node but are missing, according to the main target
 collection **`XRD_<baseColl[target]>`**
 
@@ -160,14 +160,14 @@ Crawl over working folder (`<ROOTD_PREFIX>/<baseFolders[target]>`) and inspect
 all files of type `target`:
 
 * Check if file link to actual data file is ok
-  * *if not*: add entry to **`XRD_<baseColl[target]>_miss`** using `'issue' = 'brokenLink'` and proceed to next file
+  * *if not*: add entry to **`XRD_<baseColl[target]>_missing`** using `'issue' = 'brokenLink'` and proceed to next file
 
 * Check if file is supposed to be on the node in `listOfFilesOnNode`.
   * *if not*: add entry to **`XRD_<baseColl[target]>_new`**   
 
 After the crawl is finished, add any remaining entries from files, which are
 supposed to be on the node (in `listOfFilesOnNode`) but couldn't be found,
-to **`XRD_<baseColl[target]>_miss`**.
+to **`XRD_<baseColl[target]>_missing`**.
 
 ##### Update server info
 After the crawl has been done, the information of the data server is collected
@@ -180,3 +180,11 @@ Updated information:
 
 ### crawlerXRD.sh
 Daily `CRON` script, executed locally on every server node. It calls `crawlerXRD.py`
+
+
+### dataServerCheck.py
+
+
+"XRD_DataServers"
+
+  /global/homes/s/starxrd/bin/cluster.env'
