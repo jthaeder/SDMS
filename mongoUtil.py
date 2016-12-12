@@ -24,7 +24,7 @@ ADMIN_USER    = 'STAR_XROOTD_admin'
 READONLY_USER = 'STAR_XROOTD_ro'
 
 COLLECTION_INDICES = {'HPSS_Files': 'fileFullPath', 'HPSS_PicoDsts': 'filePath', 'XRD_DataServers': 'nodeName',
-                      'XRD_PicoDsts': 'filePath'}
+                      'XRD_PicoDsts': 'filePath', 'XRD_PicoDsts_brokenLink': 'nodeFilePath'}
 
 ##############################################
 
@@ -134,7 +134,7 @@ class mongoDbUtil:
 
         self._setProcessLock(fieldName, False)
         return
-        
+
 # ----------------------------------------------------------------------------------
 
 # ____________________________________________________________________________
