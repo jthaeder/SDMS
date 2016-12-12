@@ -152,7 +152,7 @@ class dataServerCheck:
         # -- Create node document
         doc = {
                'nodeName': server,
-               'lastWalkerRun' : '2000-01-01',
+               'lastCrawlerRun' : '2000-01-01',
                'totalSpace': -1,
                'usedSpace': -1,
                'freeSpace': -1
@@ -163,23 +163,25 @@ class dataServerCheck:
 
         # --- was active before
         if server in self._listOfActiveServers:
-            self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']}, {'$set': {'lastSeen': self._today}})
-
+            self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
+                                                                {'$set': {'lastSeen': self._today}})
             # ---- now inactive
             if not isServerActive:
                 self._listOfNowInactiveServers.append(server)
                 self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                    {'$set': {'setInactive': self._today, 'stateActive': isServerActive}})
-
+                                                                    {'$set': {'setInactive': self._today,
+                                                                              'stateActive': isServerActive}})
         # --- was inactive before
         elif server in self._listOfInactiveServers:
-            self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']}, {'$set': {'lastSeen': self._today}})
+            self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
+                                                                {'$set': {'lastSeen': self._today}})
 
             # ---- now active
             if isServerActive:
                 self._listOfNowActiveServers.append(server)
                 self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                    {'$set': {'setInactive': -1, 'stateActive': isServerActive}})
+                                                                    {'$set': {'setInactive': -1,
+                                                                              'stateActive': isServerActive}})
         # --- new
         else:
             self._listOfNewServers.append(server)
@@ -234,7 +236,6 @@ def main():
     serverCheck = dataServerCheck('/global/homes/s/starxrd/bin/cluster.env')
 
     serverCheck.addCollection('dataServerXRD', dbUtil.getCollection("XRD_DataServers"))
-
     serverCheck.createReport('dataServerXRD')
 
     dbUtil.close()
