@@ -204,7 +204,7 @@ class processXRD:
                         self._collsXRDCorrupt[target].insert_many(xrdDocs)
                     except:
                         pass
-                        
+
                     self._collsXRDNew[target].delete_many({'storage.location': 'XRD',
                                                            'target': target,
                                                            'filePath': xrdDocNew['filePath']})
@@ -317,8 +317,12 @@ def main():
     xrd = processXRD(dbUtil)
 
     # -- process different targets
-    xrd.processNew('picoDst')
-    xrd.processMiss('picoDst')
+    target = 'picoDst'
+    dbUtil.setProcessLock("process_XRD_{0}".format(target))
+    xrd.processNew(target)
+    xrd.processMiss(target)
+    dbUtil.unsetProcessLock("process_XRD_{0}".format(target))
+
 
     # -- Update data server DB
 
