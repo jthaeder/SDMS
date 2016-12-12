@@ -106,11 +106,34 @@ class mongoDbUtil:
         docLock = collLock.find_one({'unique': 'unique'})
         if not docLock:
             return False
-        
+
         if not fieldName in docLock.keys():
             return False
 
         return docLock[fieldName]
+
+    # _________________________________________________________
+    def _setProcessLock(self, fieldName, state):
+        """Set process lock state."""
+
+        collLock = self.getCollection("Process_Locks")
+        collLock.find_one_and_update({'unique': 'unique'},
+                                    {$set': {fieldName: state}})
+        return
+
+    # _________________________________________________________
+    def setProcessLock(self, fieldName):
+        """Set process lock - active."""
+
+        self._setProcessLock(fieldName, True)
+        return
+
+    # _________________________________________________________
+    def unsetProcessLock(self, fieldName):
+        """Set process lock - inactive."""
+
+        self._setProcessLock(fieldName, False)
+        return
         
 # ----------------------------------------------------------------------------------
 
