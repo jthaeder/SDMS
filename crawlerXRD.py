@@ -74,14 +74,16 @@ class crawlerXRD:
     def _addCollections(self):
         """Get collections from mongoDB."""
 
-        self._colls     = dict.fromkeys(self._listOfTargets)
-        self._collsNew  = dict.fromkeys(self._listOfTargets)
-        self._collsMiss = dict.fromkeys(self._listOfTargets)
+        self._colls       = dict.fromkeys(self._listOfTargets)
+        self._collsNew    = dict.fromkeys(self._listOfTargets)
+        self._collsMiss   = dict.fromkeys(self._listOfTargets)
+        self._collsNoLink = dict.fromkeys(self._listOfTargets)
 
         for target in self._listOfTargets:
-            self._colls[target]     = self._dbUtil.getCollection('XRD_' + self._baseColl[target])
-            self._collsNew[target]  = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_new')
-            self._collsMiss[target] = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_missing')
+            self._colls[target]       = self._dbUtil.getCollection('XRD_' + self._baseColl[target])
+            self._collsNew[target]    = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_new')
+            self._collsMiss[target]   = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_missing')
+            self._collsNoLink[target] = self._dbUtil.getCollection('XRD_' + self._baseColl[target]+'_brokenLink')
 
         self._collDataServer = self._dbUtil.getCollection("XRD_DataServers")
 
@@ -145,7 +147,11 @@ class crawlerXRD:
                         fstat = os.stat(doc['fileFullPath'])
                     except OSError as e:
                         doc['issue'] = 'brokenLink'
-                        self._collsMiss[target].insert(doc)
+                        doc['nodeFilePath'] = '{0}_{1}'.format(self._nodename, doc['filePath'])
+                        try:
+                            self._collsNoLink[target].insert(doc)
+                        except:
+                            pass
                         continue
 
                     doc['fileSize'] = fstat.st_size

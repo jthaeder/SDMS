@@ -7,7 +7,7 @@ All scripts described here have to be executed as `starxrd` user.
 
 ## MongoDB collections
 
-For every target, a set of **3** mongoDB collections exist:  
+For every target, a set of **4** mongoDB collections exist:  
 (For a list of targets see below)
 
 ### **`XRD_<baseColl[target]>`**
@@ -88,6 +88,17 @@ doc = {'fileFullPath': os.path.join(root, fileName),
        'fileSize': -1}
 ```
 
+### **`XRD_<baseColl[target]>_brokenLink`**
+The collection for every target (eg. **`XRD_PicoDsts_brokenLink`**) of files
+which are supposed to be on the node but only the link exists (and not the
+actual data file), according to the main target collection
+**`XRD_<baseColl[target]>`**.
+
+Broken Links on disk from **`XRD_<baseColl[target]>_brokenLink`** are deleted
+from cron script `rmBrokenLinksXRD.py` running as `starxrd` user.
+
+
+
 ### **`XRD_DataServers`**
 Information of all nodes in **`cluster.env`** file, updated daily
 
@@ -160,7 +171,7 @@ Crawl over working folder (`<ROOTD_PREFIX>/<baseFolders[target]>`) and inspect
 all files of type `target`:
 
 * Check if file link to actual data file is ok
-  * *if not*: add entry to **`XRD_<baseColl[target]>_missing`** using `'issue' = 'brokenLink'` and proceed to next file
+  * *if not*: add entry to **`XRD_<baseColl[target]>_brokenLink`** using `'issue' = 'brokenLink'` and proceed to next file
 
 * Check if file is supposed to be on the node in `listOfFilesOnNode`.
   * *if not*: add entry to **`XRD_<baseColl[target]>_new`**   
