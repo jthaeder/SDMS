@@ -118,7 +118,7 @@ class mongoDbUtil:
 
         collLock = self.getCollection("Process_Locks")
         collLock.find_one_and_update({'unique': 'unique'},
-                                    {$set': {fieldName: state}})
+                                    {'$set': {fieldName: state}})
         return
 
     # _________________________________________________________
