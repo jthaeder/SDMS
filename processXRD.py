@@ -74,8 +74,6 @@ class processXRD:
         self._collsXRDMiss    = dict.fromkeys(self._listOfTargets)
         self._collsXRDCorrupt = dict.fromkeys(self._listOfTargets)
         self._collsXRDNoHPSS  = dict.fromkeys(self._listOfTargets)
-        self._collsXRDNoLink  = dict.fromkeys(self._listOfTargets)
-
 
         for target in self._listOfTargets:
             self._collsHPSS[target] = dbUtil.getCollection('HPSS_' + self._baseColl[target])
@@ -85,7 +83,6 @@ class processXRD:
             self._collsXRDMiss[target]    = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_missing')
             self._collsXRDCorrupt[target] = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_corrupt')
             self._collsXRDNoHPSS[target]  = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_nohpss')
-            self._collsXRDNoLink[target]  = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_nolink')
 
     # _________________________________________________________
     def processNew(self, target):
@@ -240,7 +237,8 @@ class processXRD:
         """process target of missing files
 
             Loop over collection of missing files and remove them from
-            XRD collection. If file has several copies, remove one copy.
+            XRD collection. If file has several copies, remove the copy of
+            the node where its missing.
             """
 
         print("Process Target:", target, "missing")
@@ -249,14 +247,13 @@ class processXRD:
             print('Unknown "target"', target, 'for processing')
             return
 
-        # -- process broken links of target
-        self._processMissBrokenLinks(target)
-
         # -- Loop over all documents in the new collection
         while True:
 
             # - Get first document of target
-            xrdDocMiss = self._collsXRDMiss[target].find_one({'storage.location': 'XRD', 'target': target})
+            xrdDocMiss = self._collsXRDMiss[target].find_one({'storage.location': 'XRD',
+                                                              'target': target,
+                                                              'issue':'missing'})
             if not xrdDocMiss:
                 break
 
@@ -276,10 +273,10 @@ class processXRD:
             if existDoc['storage']['nCopies'] == 1:
                 self._collsXRD[target].delete_one({'_id': existDoc['_id']})
 
-            # -- Remove one storge detail
+            # -- Remove one storage detail
             else:
                 detailsSet = set(existDoc['storage']['details'])
-                detailsSet.delete(xrdDocMiss['storage']['detail'])  ## CHECK THIS METHOD
+                detailsSet.discard(xrdDocMiss['storage']['detail'])
 
                 self._collsXRD[target].find_one_and_update({'storage.location': 'XRD',
                                                             'target': target,
@@ -290,22 +287,6 @@ class processXRD:
 
             # -- Remove from list of missing
             self._collsXRDMiss[target].delete_one({'_id': xrdDocMiss['_id']})
-
-
-    # _________________________________________________________
-    def _processMissBrokenLinks(self, target):
-        """Move broken links in new collection"""
-
-        xrdDocs = self._collsXRDMiss[target].find({'storage.location': 'XRD',
-                                                   'target': target,
-                                                   'issue': 'brokenLink'})
-
-        self._collsXRDNoLink[target].insert_many(xrdDocs)
-
-        self._collsXRDMiss[target].delete_many({'storage.location': 'XRD',
-                                                'target': target,
-                                                'issue': 'brokenLink'})
-
 
 # ____________________________________________________________________________
 def main():
