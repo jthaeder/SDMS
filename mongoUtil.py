@@ -121,7 +121,7 @@ class mongoDbUtil:
 
         if self.checkProcessLock(fieldName):
             return True
-        else
+        else:
             self.setProcessLock(fieldName)
             return False
 
