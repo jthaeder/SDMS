@@ -147,7 +147,7 @@ class crawlerXRD:
                         fstat = os.stat(doc['fileFullPath'])
                     except OSError as e:
                         doc['issue'] = 'brokenLink'
-                        doc['nodeFilePath'] = '{0}_{1}'.format(self._nodename, doc['filePath'])
+                        doc['nodeFilePath'] = '{0}_{1}'.format(self._nodeName, doc['filePath'])
                         try:
                             self._collsNoLink[target].insert(doc)
                         except:
