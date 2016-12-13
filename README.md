@@ -18,7 +18,7 @@ Scripts to crawl HPSS and populate mongoDB as 'the truth'.
 * `inspectHPSS.py` - *Script to check the filled HPSS mongoDB collections*  
   [Read more here](README_CrawlerHPSS.md)
 
-* `processXRD.py` - *Scripts to process the output of the `crawlerXRD.py`*
+* `processXRD.py` - *Scripts to process the output of the `crawlerXRD.py`*  
   [Read more here](README_ProcessXRD.md)
 
 ## tarToHPSS
