@@ -113,6 +113,19 @@ class mongoDbUtil:
         return docLock[fieldName]
 
     # _________________________________________________________
+    def checkSetProcessLock(self, fieldName):
+        """Check process lock and set if False.
+
+           Returns True if already locked.
+           """
+
+        if self.checkProcessLock(fieldName):
+            return True
+        else
+            self.setProcessLock(fieldName)
+            return False
+
+    # _________________________________________________________
     def _setProcessLock(self, fieldName, state):
         """Set process lock state."""
 
