@@ -85,7 +85,7 @@ class processXRD:
             self._collsXRDNew[target]     = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_new')
             self._collsXRDMiss[target]    = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_missing')
             self._collsXRDCorrupt[target] = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_corrupt')
-            self._collsXRDNoHPSS[target]  = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_nohpss')
+            self._collsXRDNoHPSS[target]  = dbUtil.getCollection('XRD_' + self._baseColl[target]+'_noHpss')
 
     # _________________________________________________________
     def processNew(self, target):
