@@ -91,7 +91,7 @@ class crawlerXRD:
     def process(self, target):
         """process target"""
 
-        print("Process Target:", target, "on", self._nodeName)
+        # print("Process Target:", target, "on", self._nodeName)
 
         if target not in self._listOfTargets:
             print('Unknown "target"', target, 'for processing')
@@ -244,5 +244,5 @@ def main():
     dbUtil.close()
 # ____________________________________________________________________________
 if __name__ == "__main__":
-    print("Start XRD Crawler on", socket.getfqdn().split('.')[0])
+    #print("Start XRD Crawler on", socket.getfqdn().split('.')[0])
     sys.exit(main())
