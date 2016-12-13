@@ -139,6 +139,8 @@ class processXRD:
                 # -- Check if the fileSizes match
                 #    - if not move new document to extra collection : Corrupt
                 if existDoc['fileSize'] != xrdDocNew['fileSize']:
+                    xrdDocNew['nodeFilePath'] = "{0}_{1}".format(xrdDocNew['storage']['detail'], xrdDocNew['filePath'])
+
                     try:
                         self._collsXRDCorrupt[target].insert(xrdDocNew)
                     except:
@@ -150,7 +152,7 @@ class processXRD:
                 # -- Update the set of all nodes where the file is stored
                 detailsSet = set(existDoc['storage']['details'])
                 detailsSet.update(nodeSet)
-                
+
                 newNodeDiskDict = existDoc['storage']['disks'].copy()
                 newNodeDiskDict.update(nodeDiskDict)
 
@@ -178,6 +180,8 @@ class processXRD:
             # -- Check if HPSS doc exists
             #    - if not move new document to extra collection : NoHPSS
             if not hpssDoc:
+                xrdDocNew['nodeFilePath'] = "{0}_{1}".format(xrdDocNew['storage']['detail'], xrdDocNew['filePath'])
+
                 try:
                     self._collsXRDNoHPSS[target].insert(xrdDocNew)
                 except:
@@ -207,6 +211,9 @@ class processXRD:
                 self._collsXRD[target].insert(doc)
 
             else:
+                for item in xrdDocs:
+                    item['nodeFilePath'] = "{0}_{1}".format(item['storage']['detail'], item['filePath'])
+
                 try:
                     self._collsXRDCorrupt[target].insert_many(xrdDocs)
                 except:
