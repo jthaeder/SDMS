@@ -150,8 +150,8 @@ class processXRD:
                 # -- Update the set of all nodes where the file is stored
                 detailsSet = set(existDoc['storage']['details'])
                 detailsSet.update(nodeSet)
-
-                newNodeDiskDict = existDoc['storage']['details'].copy()
+                
+                newNodeDiskDict = existDoc['storage']['disks'].copy()
                 newNodeDiskDict.update(nodeDiskDict)
 
                 # -- Update existing document
@@ -291,10 +291,9 @@ def main():
         xrd.processNew(target)
         dbUtil.unsetProcessLock("process_XRD_{0}".format(target))
 
-
     # -- Update data server DB
-
     dbUtil.close()
+
 # ____________________________________________________________________________
 if __name__ == "__main__":
     print("Start XRD Processing!")
