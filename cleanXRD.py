@@ -153,12 +153,19 @@ class cleanXRD:
                 for text in logList:
                     print("Log:   ", text)
 
+        # -- Look at files sizes larger 0
+        for doc in self._collsXRDCorrupt[target].find({'fileSize': {"$gt" : 0}}):
+            fileFullPath = doc['fileFullPath']
 
+            hpssDoc = self._collsHPSS[target].find_one({'filePath': doc['filePath'] })
+            xrdDoc = self._collsRDX[target].find_one({'filePath': doc['filePath'] })
 
+            print("File: {0}".format(fileFullPath[idxBasePath:]))
+            print("  Corrupt {0}".format(doc['fileSize'])
+            print("  HPSS    {0}".format(hpssDoc['fileSize'])
 
-
-
-
+            if xrdDoc:
+                print("  XRD     {0}".format(xrdDoc['fileSize'])             
 
 # ____________________________________________________________________________
 def main():
