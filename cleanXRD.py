@@ -33,6 +33,13 @@ from pymongo import bulk
 
 from pprint import pprint
 
+##############################################
+# -- GLOBAL CONSTANTS
+
+XROOTD_BASE = '/export/data/xrd/ns'
+XROOTD_SERVER = pstarxrdr1
+
+##############################################
 
 # -- Check for a proper Python Version
 if sys.version[0:3] < '3.0':
@@ -89,10 +96,10 @@ class cleanXRD:
 
         # -- Get clean command for every node - to get only one ssh command per node
         for node in nodeList:
-  
+
             pathList = list(item['fileFullPath'] for item in self._collsXRDBrokenLink[target].find({'storage.detail': node},
                                                                   {'fileFullPath': True, '_id': False}))
-                            
+
             fileListString = ' '.join(pathList)
 
             # -- On every node: remove files with broken links
@@ -117,6 +124,33 @@ class cleanXRD:
             """
 
         print("Process Target:", target, "corrupt")
+
+        idxBasePath = len(XROOTD_BASE)
+
+        # -- Delete all filese with size 0
+        for doc in self._collsXRDCorrupt[target].find({'fileSize': 0},
+                                                      {'fileFullPath': True, '_id': False}))
+
+            fileFullPath = doc['fileFullPath']
+
+            print(fileFullPath[idxBasePath:])
+
+            xrdCmd = "isfileonline"
+
+            # -- Remove files with fileSize of 0
+            cmdLine = 'xrd {0} {1} {2}'.format(XROOTD_SERVER, xrdCmd, fileFullPath[idxBasePath:])
+            cmd = shlex.split(cmdLine)
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+            for text in iter(p.stdout.readline, b''):
+                print("Log: ", text.decode("utf-8").rstrip())
+
+            # -- Clean up collection
+            self._collsXRDCorrupt[target].delete_one({'_id': doc['_id']})
+
+
+
+
 
 
 # ____________________________________________________________________________
