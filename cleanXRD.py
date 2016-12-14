@@ -37,7 +37,7 @@ from pprint import pprint
 # -- GLOBAL CONSTANTS
 
 XROOTD_BASE = '/export/data/xrd/ns'
-XROOTD_SERVER = pstarxrdr1
+XROOTD_SERVER = 'pstarxrdr1'
 
 ##############################################
 
@@ -125,28 +125,35 @@ class cleanXRD:
 
         print("Process Target:", target, "corrupt")
 
-        idxBasePath = len(XROOTD_BASE)
+        idxBasePath = len(XROOTD_BASE)+1
 
         # -- Delete all filese with size 0
-        for doc in self._collsXRDCorrupt[target].find({'fileSize': 0},
-                                                      {'fileFullPath': True, '_id': False}))
-
+        for doc in self._collsXRDCorrupt[target].find({'fileSize': 0}):
             fileFullPath = doc['fileFullPath']
 
-            print(fileFullPath[idxBasePath:])
-
-            xrdCmd = "isfileonline"
+            xrdCmd = "rm"
 
             # -- Remove files with fileSize of 0
             cmdLine = 'xrd {0} {1} {2}'.format(XROOTD_SERVER, xrdCmd, fileFullPath[idxBasePath:])
             cmd = shlex.split(cmdLine)
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
+            errorCode = False
+            logList = []
             for text in iter(p.stdout.readline, b''):
-                print("Log: ", text.decode("utf-8").rstrip())
+                logList.append(text.decode("utf-8").rstrip())
+                if "The command returned an error." in text.decode("utf-8").rstrip():
+                    errorCode = True
 
-            # -- Clean up collection
-            self._collsXRDCorrupt[target].delete_one({'_id': doc['_id']})
+            # -- Clean up collection if no error occured
+            if not errorCode:
+                self._collsXRDCorrupt[target].delete_one({'_id': doc['_id']})
+            else:
+                print("Log: ", "Error deleteing", doc['storage']['detail'], ":", fileFullPath)
+                for text in logList:
+                    print("Log:   ", text)
+
+
 
 
 
