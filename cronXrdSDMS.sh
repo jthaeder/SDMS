@@ -37,8 +37,6 @@ module load python/3.4.3
 module use -a /common/star/pkg/Modules
 module load xrootd
 
-module list
-
 #####################################################
 
 
