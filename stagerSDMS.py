@@ -47,7 +47,7 @@ class stagerSDMS:
     """ Stager to from HPSS at NERSC"""
 
     # _________________________________________________________
-    def __init__(self, stageingFile, scratchSpace):
+    def __init__(self, dbUtil, stageingFile, scratchSpace):
         self._stageingFile = stageingFile
         self._scratchSpace = scratchSpace
 
@@ -102,18 +102,20 @@ class stagerSDMS:
     def markFilesToBeStaged(self):
         """Mark files to be staged from staging file in `HPSS_<target>`."""
 
-        # -- Rest previous stage markers
+        self.numberOfFilesToBeStaged()
+
+        # -- Reset previous stage markers
         self._resetAllStagingMarks()
 
+        self.numberOfFilesToBeStaged()
+        
         # -- Loop over every set from staging file one-by-one as stageSet
         for stageSet in self._sets:
             if not self._prepareSet(stageSet):
                 continue
 
-            print("MARK SET")
-            print(stageSet)
             # -- Set stage marker using the the stageSet as find query
-            #self._collsHPSS[stageSet['target']].update_many(stageSet, {'$set': {self._targetField: True}})
+            self._collsHPSS[self._target].update_many(stageSet, {'$set': {self._targetField: True}})
 
     # _________________________________________________________
     def _resetAllStagingMarks(self):
@@ -121,19 +123,21 @@ class stagerSDMS:
 
         # -- Rest all staging markers
         for target, collection in self._collsHPSS.items():
-            for targetField in collection.find().distinct('staging'):
+            for targetKey in set().union(*(dic.keys() for dic in collection.distinct('staging'))):
+                targetField = "staging.{0}".format(targetKey)
                 collection.update_many({}, {'$set': {targetField: False}})
 
     # _________________________________________________________
     def numberOfFilesToBeStaged(self):
-        """Returns a list of all files to be staged `HPSS_<target>`."""
-
+        """Prints number of all files to be staged `HPSS_<target>`."""
+        
         for target, collection in self._collsHPSS.items():
-            for targetField in collection.find().distinct('staging'):
+            for targetKey in set().union(*(dic.keys() for dic in collection.distinct('staging'))):
+                targetField = "staging.{0}".format(targetKey)
                 nStaged = collection.find({targetField: True}).count()
 
                 print('For {0} in collection: {1}'.format(target, collection.name))
-                print('   Files to be staged on {0}: {1}'.format(targetField, nStaged))
+                print('   Files to be staged with {0}: {1}'.format(targetField, nStaged))
 
     # _________________________________________________________
     def _prepareSet(self, stageSet):
@@ -201,7 +205,7 @@ class stagerSDMS:
 
             # -- Get all files to be staged
             #   ... FIX query
-            hpssDocs = self._collsHPSS[target].find({'dataClass': target, stageField: True})])
+            hpssDocs = self._collsHPSS[target].find({'dataClass': target, stageField: True})
             docsSetHPSS = set([item['filePath'] for item in hpssDocs])
 
             # -- Get all files on stageing Target
@@ -216,13 +220,13 @@ class stagerSDMS:
             docsToRemove = docsSetStaged - docsSetHPSS
 
             # -- Mark Documents as to be unStaged
-            self._collsStage[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
-                                                              { '$set': {'unStageFlag': True} })
+#            self._collsStage[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
+#                                                              { '$set': {'unStageFlag': True} })
 
 
             # -- Make list of documents to be removed
-            mark collection files in staged collection as  to be removed
-            -> use other clear script to explictly remove
+ #           mark collection files in staged collection as  to be removed
+  #          -> use other clear script to explictly remove
 
             listToStageFromHPSS = []
 
@@ -263,9 +267,6 @@ def main():
     dbUtil = mongoDbUtil("", "admin")
 
     stager = stagerSDMS(dbUtil, 'stagingRequest.json', os.getenv('SCRATCH', SCRATCH_SPACE))
-
-    stager.numberOfFilesToBeStaged()
-
 
     # -- Mark files to be staged
     stager.markFilesToBeStaged()
