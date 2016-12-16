@@ -1,19 +1,21 @@
-{"sets":[
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "7.7GeV"},
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "11GeV"},
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "39GeV"},
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "62GeV"},
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "200GeV"},
+{
+	"sets":[
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "7.7GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "11GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "39GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "62GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run10", "system": "AuAu", "energy": "200GeV"},
 
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "19GeV"},
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "27GeV"},
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "200GeV"},
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run11", "system": "pp", "energy": "500GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "19GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "27GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run11", "system": "AuAu", "energy": "200GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run11", "system": "pp", "energy": "500GeV"},
 
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run12", "system": "pp", "energy": "200GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run12", "system": "pp", "energy": "200GeV"},
 
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run13", "system": "pp", "energy": "510GeV"},
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run13", "system": "pp", "energy": "510GeV"},
 
-	{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run14", "system": "AuAu", "energy": "200GeV", "trigger": "physics2", "production": "P15ic"}
-	]
+		{"stageTarget": "XRD", "target": "picoDst", "runyear": "Run14", "system": "AuAu", "energy": "200GeV", "trigger": "physics2", "production": "P15ic"}
+		],
+		"nCopies": 2
 }

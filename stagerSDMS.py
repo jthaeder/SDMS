@@ -57,12 +57,11 @@ class stagerSDMS:
                                     'trigger', 'production', 'day',
                                     'runnumber', 'stream']
 
-        self._listOfTargets = ['picoDst', 'picoDstJet', 'aschmah']
+        self._listOfTargets = ['picoDst', 'picoDstJet']
 
         # -- base Collection Names
         self._baseColl = {'picoDst': 'PicoDsts',
-                          'picoDstJet': 'PicoDstsJets',
-                          'aschmah': 'ASchmah'}
+                          'picoDstJet': 'PicoDstsJets'}
 
         self._readStagingFile()
 
@@ -81,6 +80,11 @@ class stagerSDMS:
                 print('Error reading staging file: no "sets" found')
                 sys.exit(-1)
 
+            try:
+                self._nCopies = setList['nCopies']
+            except:
+                self._nCopies = 1
+
     # _________________________________________________________
     def _addCollections(self, dbUtil):
         """Get collections from mongoDB."""
@@ -90,14 +94,15 @@ class stagerSDMS:
         for target in self._listOfTargets:
             self._collsHPSS[target] = dbUtil.getCollection('HPSS_' + self._baseColl[target])
 
-        self._collsStage = dict.fromkeys(self._listOfTargets)
+        self._collsStageTarget = dict.fromkeys(self._listOfTargets)
         for target in self._listOfTargets:
-            self._collsStage[target] = dict.fromkeys(self._listOfStageTargets)
+            self._collsStageTarget[target] = dict.fromkeys(self._listOfStageTargets)
 
             for stageTarget in self._listOfStageTargets:
-                self._collsStage[target][stageTarget] = dbUtil.getCollection(stageTarget+'_'+ self._baseColl[target])
+                self._collsStageTarget[target][stageTarget] = dbUtil.getCollection(stageTarget+'_'+ self._baseColl[target])
                 foo = stageTarget+'_'+ self._baseColl[target]
                 print("COLL: ", target, stageTarget, foo)
+
     # _________________________________________________________
     def markFilesToBeStaged(self):
         """Mark files to be staged from staging file in `HPSS_<target>`."""
@@ -108,7 +113,7 @@ class stagerSDMS:
         self._resetAllStagingMarks()
 
         self.numberOfFilesToBeStaged()
-        
+
         # -- Loop over every set from staging file one-by-one as stageSet
         for stageSet in self._sets:
             if not self._prepareSet(stageSet):
@@ -130,7 +135,7 @@ class stagerSDMS:
     # _________________________________________________________
     def numberOfFilesToBeStaged(self):
         """Prints number of all files to be staged `HPSS_<target>`."""
-        
+
         for target, collection in self._collsHPSS.items():
             for targetKey in set().union(*(dic.keys() for dic in collection.distinct('staging'))):
                 targetField = "staging.{0}".format(targetKey)
@@ -192,35 +197,42 @@ class stagerSDMS:
         return True
 
     # _________________________________________________________
-    def prepareListOfFilesToBeStaged(self, stageTarget):
-        """Check for files to be staged"""
+    def gitListOfFilesFromHPSS(self):
+        """Get list of files of type target to be retrieved from HPSS"""
 
-        if stageTarget not in  self._listOfStageTargets:
-            return False
-
-        stageField = 'staging.stageMarker{0}'.format(stageTarget)
-
-        # -- Loop over targets
+        # -- Loop over targets (picoDsts, etc.)
         for target in self._listOfTargets:
 
-            # -- Get all files to be staged
-            #   ... FIX query
-            hpssDocs = self._collsHPSS[target].find({'dataClass': target, stageField: True})
-            docsSetHPSS = set([item['filePath'] for item in hpssDocs])
+            # -- Loop over stage targets (XRD, disk)
+            for stageTarget in self._listOfStageTargets:
+                stageField = 'staging.stageMarker{0}'.format(stageTarget)
 
-            # -- Get all files on stageing Target
-            stagedDocs = list(self._collsXRDNew[target].find({'storage.location': stageTarget,
-                                                      'dataClass': target}))
-            docsSetStaged = set([item['filePath'] for item in stagedDocs])
+                # -- Get all documents from HPSS to be staged
+                hpssDocs = list(self._collsHPSS[target].find({'target': target, stageField: True}))
+                docsSetHPSS = set([item['filePath'] for item in hpssDocs])
 
-            # -- Document to be staged
-            docsToStage  = docsSetHPSS - docsSetStaged
+                # -- Get all files on stageing Target
+                stagedDocs = list(self._collsStageTarget[target][stageTarget].find({'storage.location': stageTarget,
+                                                                                'target': target}))
+                docsSetStaged = set([item['filePath'] for item in stagedDocs])
 
-            # -- Documents to be removed from stageTarget
-            docsToRemove = docsSetStaged - docsSetHPSS
+                print("hpss   ", len(docsSetHPSS))
+                print("xrd    ", len(docsSetStaged))
+
+                # -- Document to be staged
+                docsToStage = docsSetHPSS - docsSetStaged
+
+                # -- Documents to be removed from stageTarget
+                docsToRemove = docsSetStaged - docsSetHPSS
+
+                print("xrd    ", len(docsSetStaged))
+                print("xrdnew ", len(docsToStage))
+                print("xrdrm  ", len(docsToRemove))
+
+
 
             # -- Mark Documents as to be unStaged
-#            self._collsStage[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
+#            self._collsStageTarget[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
 #                                                              { '$set': {'unStageFlag': True} })
 
 
@@ -273,7 +285,7 @@ def main():
     stager.numberOfFilesToBeStaged()
 
     # -- Get list of files to be staged
-#    stager.prepareListOfFilesToBeStaged()
+    stager.prepareListOfFilesToBeStaged()
 
     # -- Stage from staging area to staging location
 #    stager.stage()
