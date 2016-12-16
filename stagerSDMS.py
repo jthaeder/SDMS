@@ -197,7 +197,7 @@ class stagerSDMS:
         return True
 
     # _________________________________________________________
-    def gitListOfFilesFromHPSS(self):
+    def getListOfFilesFromHPSS(self):
         """Get list of files of type target to be retrieved from HPSS"""
 
         # -- Loop over targets (picoDsts, etc.)
@@ -285,7 +285,7 @@ def main():
     stager.numberOfFilesToBeStaged()
 
     # -- Get list of files to be staged
-    stager.prepareListOfFilesToBeStaged()
+    stager.getListOfFilesFromHPSS()
 
     # -- Stage from staging area to staging location
 #    stager.stage()
