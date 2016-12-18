@@ -213,9 +213,8 @@ class crawlerXRD:
 
         # -- update DB
         doc = {'nodeName': self._nodeName,
-               'setInactive': -1,
-               'stateActive': True,
-               'lastSeen': '-1'}
+               'stateActive': False,
+               'lastSeenActive': '2000-01-01',}
 
         self._collDataServer.find_one_and_update({'nodeName': doc['nodeName']},
                                                  {'$set': {'freeSpace': free,
