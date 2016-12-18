@@ -158,14 +158,15 @@ class cleanXRD:
             fileFullPath = doc['fileFullPath']
 
             hpssDoc = self._collsHPSS[target].find_one({'filePath': doc['filePath'] })
-            xrdDoc = self._collsRDX[target].find_one({'filePath': doc['filePath'] })
+            xrdDoc = self._collsXRD[target].find_one({'filePath': doc['filePath'] })
 
+#            if doc['fileSize'] > hpssDoc['fileSize']:
             print("File: {0}".format(fileFullPath[idxBasePath:]))
-            print("  Corrupt {0}".format(doc['fileSize'])
-            print("  HPSS    {0}".format(hpssDoc['fileSize'])
+            print("  Corrupt {0}".format(doc['fileSize']))
+            print("  HPSS    {0}".format(hpssDoc['fileSize']))
 
             if xrdDoc:
-                print("  XRD     {0}".format(xrdDoc['fileSize'])             
+                print("  XRD     {0}".format(xrdDoc['fileSize']))
 
 # ____________________________________________________________________________
 def main():
