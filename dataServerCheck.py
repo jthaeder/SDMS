@@ -85,7 +85,8 @@ class dataServerCheck:
         for serverListString in iter(p.stdout.readline, b''):
             envList = serverListString.decode("utf-8").rstrip().split()
 
-        return envList
+        envListCleaned = [node.strip('-ib') for node in envList]
+        return envListCleaned
 
     # _________________________________________________________
     def addCollection(self, collection):
@@ -104,16 +105,12 @@ class dataServerCheck:
         # -- Get list of all data servers
         self._listOfDataServers = set(d['nodeName'] for d in self._collServerXRD.find({'role': 'DATASERVER'}))
 
-        # -- Prepare list of changes
-        self._listOfNowInactiveServers = []
-        self._listOfNowActiveServers = []
-
     # _________________________________________________________
     def updateAllServerList(self):
         """Update all servers state active/inactive"""
 
         # -- Create superset of all nodes which are and could be there
-        allServerSet = set(self._nodeRoleList['ALL_DATASERVER'])
+        allServerSet = set(self._nodeRoleList['DATASERVER'])
         allServerSet.update(self._listOfActiveServers)
         allServerSet.update(self._listOfInactiveServers)
         allServerSet.update(self._listOfDataServers)
@@ -141,18 +138,16 @@ class dataServerCheck:
 
         # -- Check for state changes and update fields
         if isServerActive:
-            self._listOfNowActiveServers.append(server)
-            self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                {'$set': {'lastSeenActive': self._today,
-                                                                           'stateActive': isServerActive},
-                                                                 '$setOnInsert' : doc}, upsert = True)
+            self._collServerXRD.find_one_and_update({'nodeName': doc['nodeName']},
+                                                    {'$set': {'lastSeenActive': self._today,
+                                                              'stateActive': isServerActive},
+                                                     '$setOnInsert' : doc}, upsert = True)
 
         else:
-            self._listOfNowInactiveServers.append(server)
             doc['lastSeenActive'] = "2000-01-01"
-            self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                {'$set': {'stateActive': isServerActive},
-                                                                 '$setOnInsert' : doc}, upsert = True)
+            self._collServerXRD.find_one_and_update({'nodeName': doc['nodeName']},
+                                                    {'$set': {'stateActive': isServerActive},
+                                                     '$setOnInsert' : doc}, upsert = True)
 
     # _________________________________________________________
     def _isServerActive(self, server):
@@ -169,7 +164,7 @@ class dataServerCheck:
             sock.close()
 
         sock.close()
-
+        
         return isServerActive
 
     # _________________________________________________________
@@ -191,33 +186,37 @@ class dataServerCheck:
                 inClusterXRD = False
 
             self._collServerXRD.find_one_and_update({'_id': docNode['_id']},
-                                                    {'$set': {'roles': roleSet,
+                                                    {'$set': {'roles': list(roleSet),
                                                               'inClusterXRD': inClusterXRD}})
 
     # _________________________________________________________
     def createReport(self):
         """Create a report on the list of servers of the target."""
 
+        # -- Get list of now active or inactive server
+        listOfNowActiveServers = set(d['nodeName'] for d in self._collServerXRD.find({'stateActive': True}))
+        listOfNowInactiveServers = set(d['nodeName'] for d in self._collServerXRD.find({'stateActive': False}))
+
         # -- Get new list of all data servers
-        self._listOfNowDataServers = set(d['nodeName'] for d in self._collections[self._target].find({'role': 'DATASERVER'}))
+        listOfNowDataServers = set(d['nodeName'] for d in self._collServerXRD.find({'role': 'DATASERVER'}))
 
         # -- New active server
-        listOfNewActiveServer = self._listOfNowActiveServers.difference(self._listOfActiveServers)
+        listOfNewActiveServer = listOfNowActiveServers.difference(self._listOfActiveServers)
         if (len(listOfNewActiveServer)):
             print("Now active: ", listOfNewActiveServer)
 
         # -- New inactive server
-        listOfNewInactiveServer = self._listOfNowInactiveServers.difference(self._listOfInactiveServers)
+        listOfNewInactiveServer = listOfNowInactiveServers.difference(self._listOfInactiveServers)
         if (len(listOfNewInactiveServer)):
             print("Now inactive: ", listOfNewInactiveServer)
 
         # -- New XRD data server
-        listOfNewDataServers = self.listOfNowDataServers.difference(self.listOfDataServers)
+        listOfNewDataServers = listOfNowDataServers.difference(self._listOfDataServers)
         if (len(listOfNewDataServers)):
             print("Now data server: ", listOfNewDataServers)
 
         # -- New Missing XRD data server
-        listOfNewMissingDataServers = self.listOfDataServers.difference(self.listOfNowDataServers)
+        listOfNewMissingDataServers = self._listOfDataServers.difference(listOfNowDataServers)
         if (len(listOfNewMissingDataServers)):
             print("Now missing data server: ", listOfNewMissingDataServers)
 
@@ -226,7 +225,17 @@ class dataServerCheck:
         if (len(inactiveServerXRD)):
             print("Inactive data server: ", inactiveServerXRD)
 
+        # -- All inactive nodes
+        if (len(inactiveServerXRD)):
+            print("Inactive data server: ", inactiveServerXRD)
+
+
+
         # -- Inactive server with data on them
+        if (len(listOfNowInactiveServers)):
+            print("Inactive Servers:", listOfNowInactiveServers)
+
+        print(len(listOfNowInactiveServers), len(listOfNowActiveServers), len(listOfNowDataServers))
 
 
 # ____________________________________________________________________________
