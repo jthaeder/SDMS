@@ -51,7 +51,7 @@ class stagerSDMS:
         self._stageingFile = stageingFile
         self._scratchSpace = scratchSpace
 
-        self._listOfStageTargets = ['XRD', 'Disk']
+        self._listOfStageTargets = ['XRD']  # , 'Disk']
 
         self._listOfQueryItems   = ['runyear', 'system', 'energy',
                                     'trigger', 'production', 'day',
@@ -89,10 +89,17 @@ class stagerSDMS:
     def _addCollections(self, dbUtil):
         """Get collections from mongoDB."""
 
+        # -- Data server collection
+        self._collServerXRD = dbUtil.getCollection('XRD_DataServers')
+
+        # -- HPPS files collection
+        self._collsHPSSFiles = dbUtil.getCollection('HPSS_Files')
+
         # -- Collections in HPSS - the 'truth'
         self._collsHPSS = dict.fromkeys(self._listOfTargets)
         for target in self._listOfTargets:
             self._collsHPSS[target] = dbUtil.getCollection('HPSS_' + self._baseColl[target])
+
 
         self._collsStageTarget = dict.fromkeys(self._listOfTargets)
         for target in self._listOfTargets:
@@ -102,6 +109,14 @@ class stagerSDMS:
                 self._collsStageTarget[target][stageTarget] = dbUtil.getCollection(stageTarget+'_'+ self._baseColl[target])
                 foo = stageTarget+'_'+ self._baseColl[target]
                 print("COLL: ", target, stageTarget, foo)
+
+        # -- Collection of files to stage from HPSS
+        self._collStageFromHPSS = dbUtil.getCollection('Stage_From_HPSS')
+
+        # -- Collection of files to stage to stageTarget
+        self._collsStageToStageTarget = dict.fromkeys(self._listOfStageTargets)
+        for stageTarget in self._listOfStageTargets:
+            self._collsStageToStageTarget[stageTarget] = dbUtil.getCollection('Stage_To_'+stageTarget)
 
     # _________________________________________________________
     def markFilesToBeStaged(self):
@@ -229,7 +244,7 @@ class stagerSDMS:
                 print("xrdnew ", len(docsToStage))
                 print("xrdrm  ", len(docsToRemove))
 
-
+                self._prepareStageColls(docsToStage, target)
 
             # -- Mark Documents as to be unStaged
 #            self._collsStageTarget[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
@@ -257,15 +272,76 @@ class stagerSDMS:
 #        add tar ball to stage list -> (use hpss tapeordering on it)
 
 
-            self._stageHPSSFiles(listToStageFromHPSS)
+
+
+
 
     #  ____________________________________________________________________________
-    def _stageHPSSFiles(self, stageList):
-        """ Stage list of files from HPSS on to scratch space"""
+    def _prepareStageColls(self, docsToStage, target):
+        """Fill collection of files to stage.
 
-        foo = "dd"
+           - Fill collection to stage from HPSS to Disk
+           - Fill collection to stage from Disk to Target
+           """
+
+        # -- Loop over all paths and gather information
+        for currentPath in docsToStage:
+
+            hpssDoc = self._collsHPSS[target].find_one({'filePath': currentPath})
+
+            if hpssDoc['isInTarFile']:
+                hpssFilePath = hpssDoc['fileFullPathTar']
+            else:
+                hpssFilePath = hpssDoc['fileFullPath']
+
+            # -- Get doc of actual file on HPSS
+            hpssDocFile = self._collsHPSSFiles.find_one({'fileFullPath': hpssFilePath})
+
+            # -- Create doc : stageDocFromHPSS
+            stageDocFromHPSS = {'fileFullPath': hpssFilePath}
+
+            if hpssDoc['isInTarFile']:
+                stageDocFromHPSS['filesInTar'] = hpssDocFile['filesInTar'],
+                stageDocFromHPSS['isInTarFile'] = True
+
+            # -- Update doc in collStageFromHPSS if doc exists otherwise add new
+            self._collStageFromHPSS.find_one_and_update({'fileFullPath': hpssFilePath},
+                                                        {'$inc' : {'nDocs':1},
+                                                         '$addToSet': {'listOfFiles': hpssDoc['fileFullPath']}
+                                                         '$setOnInsert' : stageDocFromHPSS}, upsert = True)
+
+            # -- Get Update doc in collStageToStagingTarget
+            stageDocToTarget = {
+                'filePath':     currentPath
+                'fileFullPath': hpssDoc['fileFullPath'],
+                'fileSize':     hpssDoc['fileSize'],
+                'target':       hpssDoc['target'],
+                'nCopiesExist': 0,
+                'nCopiesMissing': self._nCopies}
+
+            # -- Get nCopies from stageTarget collection
+            xrdDoc = self._collsStageTarget[target][stageTarget].find({'filePath': currentPath})
+            if (xrdDoc)
+                nCopiesExist = xrdDoc['storage']['nCopies']
+                nCopiesMissing = self._nCopies - xrdDoc['storage']['nCopies']
+
+
+            # -- Insert new doc in collStageToStagingTarget
+            try:
+                self._collsStageToStageTarget[stageTarget].insert(stageDocToTarget)
+            except:
+                pass
+
+
+
+
+    #  ____________________________________________________________________________
+    def _stageHPSSFiles(self, stageList, target):
+        """ Stage list of files from HPSS on to scratch space"""
         #-> tape ordering
         #-> stage files ->
+
+
 
     # ____________________________________________________________________________
     def stage(self):
