@@ -29,11 +29,16 @@ from pprint import pprint
 ##############################################
 # -- GLOBAL CONSTANTS
 
-DATA_SERVERS = "${ALL_DATASERVERS}"
 SOCKET_TIMEOUT = 5
 
-# ${PDSF_DATASERVERS}
-# ${MENDEL_DATASERVERS}
+ENV_FIELDS = {'META_MANAGER': "${META_MANAGER}",
+              'MENDEL_ONE_MANAGER': "${MENDEL_ONE_MANAGER}",
+              'MENDEL_TWO_MANAGER': "${MENDEL_TWO_MANAGER}",
+              'MENDEL_ONE_SUPERVISOR': "${MENDEL_ONE_SUPERVISORS}",
+              'MENDEL_TWO_SUPERVISOR': "${MENDEL_TWO_SUPERVISORS}",
+              'DATASERVER': "${ALL_DATASERVERS}",
+              'MENDEL_ONE_DATASERVER': "${MENDEL_ONE_DATASERVERS}",
+              'MENDEL_TWO_DATASERVER': "${MENDEL_TWO_DATASERVERS}"}
 
 ##############################################
 
@@ -51,12 +56,9 @@ class dataServerCheck:
     def __init__(self, clusterEnvFile):
         self._today = datetime.datetime.today().strftime('%Y-%m-%d')
         self._clusterEnvFile = clusterEnvFile
-        self._listOfTargets = ['dataServerXRD']
-        self._collections = dict.fromkeys(self._listOfTargets)
 
-        self._target = ''
-
-        self._listOfDataServersXRD = []
+        #self._listOfTargets = ['dataServerXRD']
+        #self._collections = dict.fromkeys(self._listOfTargets)
 
         self._processClusterEnvFile()
 
@@ -68,149 +70,93 @@ class dataServerCheck:
             print ('Cluster env file {0} does not exist!'.format(self._clusterEnvFile))
             sys.exit(-1)
 
-        # -- get data servers from cluster.env file
-        cmdLine = "bash -c 'source {0} && echo {1}'".format(self._clusterEnvFile, DATA_SERVERS)
-        cmd = shlex.split(cmdLine)
+        self._nodeRoleList = {}
+        for key, value in ENV_FIELDS.items():
+            self._nodeRoleList[key] = self._processClusterEnvField(value)
 
+    # _________________________________________________________
+    def _processClusterEnvField(self, envField):
+        """Process one variable in cluster.env and return list."""
+
+        cmdLine = "bash -c 'source {0} && echo {1}'".format(self._clusterEnvFile, envField)
+        cmd = shlex.split(cmdLine)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         for serverListString in iter(p.stdout.readline, b''):
-            self._listOfDataServersXRD = serverListString.decode("utf-8").rstrip().split()
+            envList = serverListString.decode("utf-8").rstrip().split()
+
+        return envList
 
     # _________________________________________________________
-    def addCollection(self, target, collection):
+    def addCollection(self, collection):
         """Get collection from mongoDB."""
 
-        if target not in  self._listOfTargets:
-            print('Unknown "target"', target, 'for adding collection')
-            return False
-
-        self._collections[target] = collection
+        self._collServerXRD = collection
 
     # _________________________________________________________
-    def createReport(self, target):
-        """creatw a report on the list of servers of the target"""
-
-        if target not in  self._listOfTargets:
-            print('Unknown "target"', target, 'for reporting')
-            return False
-
-        self._target = target
+    def prepareReport(self):
+        """Get status before the update."""
 
         # -- Get list of already active or inactive server
-        self._listOfActiveServers = [d['nodeName'] for d in self._collections[self._target].find({'stateActive': True},
-                                                                                                 {'nodeName': True, '_id': False})]
+        self._listOfActiveServers = set(d['nodeName'] for d in self._collServerXRD.find({'stateActive': True}))
+        self._listOfInactiveServers = set(d['nodeName'] for d in self._collServerXRD.find({'stateActive': False}))
 
-        self._listOfInactiveServers = [d['nodeName'] for d in self._collections[self._target].find({'stateActive': False},
-                                                                                                   {'nodeName': True, '_id': False})]
+        # -- Get list of all data servers
+        self._listOfDataServers = set(d['nodeName'] for d in self._collServerXRD.find({'role': 'DATASERVER'}))
 
         # -- Prepare list of changes
         self._listOfNowInactiveServers = []
         self._listOfNowActiveServers = []
-        self._listOfNewServers = []
-
-        # -- Update DB with actual state
-        self._updateDataServerList()
-
-        # -- Report changes
-        if len(self._listOfNowInactiveServers) or len(self._listOfNowActiveServers) or len(self._listOfNewServers):
-            print("--------------------------------------------")
-            if len(self._listOfNowInactiveServers):
-                print("Now inactive: ", self._listOfNowInactiveServers)
-            if len(self._listOfNowActiveServers):
-                print("Now active:   ", self._listOfNowActiveServers)
-            if len(self._listOfNewServers):
-                print("--------------------------------------------")
-                print("New Servers:  ", self._listOfNewServers)
-            print("--------------------------------------------")
-
-        # -- Report inactive
-        print("List of Inactive Nodes:")
-        for entry in self._collections[self._target].find({'stateActive': False}, {'nodeName': True, '_id': False, 'setInactive':True}):
-            print(entry)
-
-
 
     # _________________________________________________________
-    def _updateDataServerList(self):
-        """update list of servers"""
+    def updateAllServerList(self):
+        """Update all servers state active/inactive"""
 
-        for server in self._listOfDataServersXRD:
-            isActive = self._checkServer(server)
+        # -- Create superset of all nodes which are and could be there
+        allServerSet = set(self._nodeRoleList['ALL_DATASERVER'])
+        allServerSet.update(self._listOfActiveServers)
+        allServerSet.update(self._listOfInactiveServers)
+        allServerSet.update(self._listOfDataServers)
+
+        # -- Check if server node is active and update
+        #    add new node
+        for server in allServerSet:
+            self._processServer(server)
 
     # _________________________________________________________
-    def _checkServer(self, server):
-        """check server
-
-            return true for active server
-            return false for inactive server
-            """
+    def _processServer(self, server):
+        """Process one server according to it being active."""
 
         # -- Check is server is active
         isServerActive = self._isServerActive(server)
 
-        # -- Create node document
+        # -- Create server document (is it does not exist yet)
         doc = {
                'nodeName': server,
-               'lastCrawlerRun' : '2000-01-01',
+               'lastCrawlerRun': '2000-01-01',
                'totalSpace': -1,
                'usedSpace': -1,
                'freeSpace': -1
                }
 
-        # -- Check for state changes
-        #    Update the DB and lastSeen
-
-        # --- was active before
-        if server in self._listOfActiveServers:
+        # -- Check for state changes and update fields
+        if isServerActive:
+            self._listOfNowActiveServers.append(server)
             self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                {'$set': {'lastSeen': self._today}})
-            # ---- now inactive
-            if not isServerActive:
-                self._listOfNowInactiveServers.append(server)
-                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                    {'$set': {'setInactive': self._today,
-                                                                              'stateActive': isServerActive}})
-        # --- was inactive before
-        elif server in self._listOfInactiveServers:
-            self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                {'$set': {'lastSeen': self._today}})
+                                                                {'$set': {'lastSeenActive': self._today,
+                                                                           'stateActive': isServerActive},
+                                                                 '$setOnInsert' : doc}, upsert = True)
 
-            # ---- now active
-            if isServerActive:
-                self._listOfNowActiveServers.append(server)
-                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                    {'$set': {'setInactive': -1,
-                                                                              'stateActive': isServerActive}})
-        # --- new
         else:
-            self._listOfNewServers.append(server)
-
-            # ---- now active
-            if isServerActive:
-                self._listOfNowActiveServers.append(server)
-                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                    {'$set': {'lastSeen': self._today,
-                                                                              'setInactive': -1,
-                                                                              'stateActive': isServerActive},
-                                                                     '$setOnInsert' : doc}, upsert = True)
-            # ---- now inactive
-            else:
-                self._listOfNowInactiveServers.append(server)
-                self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
-                                                                    {'$set': {'lastSeen': -1,
-                                                                              'setInactive': self._today,
-                                                                              'stateActive': isServerActive},
-                                                                     '$setOnInsert' : doc}, upsert = True)
-
+            self._listOfNowInactiveServers.append(server)
+            doc['lastSeenActive'] = "2000-01-01"
+            self._collections[self._target].find_one_and_update({'nodeName': doc['nodeName']},
+                                                                {'$set': {'stateActive': isServerActive},
+                                                                 '$setOnInsert' : doc}, upsert = True)
 
     # _________________________________________________________
     def _isServerActive(self, server):
-        """check server
-
-            return true for active server
-            return false for inactive server
-            """
+        """Check if server is active or inactive."""
 
         isServerActive = True;
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -226,6 +172,63 @@ class dataServerCheck:
 
         return isServerActive
 
+    # _________________________________________________________
+    def setServerRoles(self):
+        """Set roles of server according to cluster.env file."""
+
+        # -- Loop over all nodes and get their role
+        for docNode in self._collServerXRD.find({}):
+
+            roleSet = set()
+            for key, value in ENV_FIELDS.items():
+                if docNode['nodeName'] in self._nodeRoleList[key]:
+                    roleSet.add(key)
+
+            # -- if node has at least one role, set as inClusterXRD
+            if len(roleSet) > 0:
+                inClusterXRD = True
+            else:
+                inClusterXRD = False
+
+            self._collServerXRD.find_one_and_update({'_id': docNode['_id']},
+                                                    {'$set': {'roles': roleSet,
+                                                              'inClusterXRD': inClusterXRD}})
+
+    # _________________________________________________________
+    def createReport(self):
+        """Create a report on the list of servers of the target."""
+
+        # -- Get new list of all data servers
+        self._listOfNowDataServers = set(d['nodeName'] for d in self._collections[self._target].find({'role': 'DATASERVER'}))
+
+        # -- New active server
+        listOfNewActiveServer = self._listOfNowActiveServers.difference(self._listOfActiveServers)
+        if (len(listOfNewActiveServer)):
+            print("Now active: ", listOfNewActiveServer)
+
+        # -- New inactive server
+        listOfNewInactiveServer = self._listOfNowInactiveServers.difference(self._listOfInactiveServers)
+        if (len(listOfNewInactiveServer)):
+            print("Now inactive: ", listOfNewInactiveServer)
+
+        # -- New XRD data server
+        listOfNewDataServers = self.listOfNowDataServers.difference(self.listOfDataServers)
+        if (len(listOfNewDataServers)):
+            print("Now data server: ", listOfNewDataServers)
+
+        # -- New Missing XRD data server
+        listOfNewMissingDataServers = self.listOfDataServers.difference(self.listOfNowDataServers)
+        if (len(listOfNewMissingDataServers)):
+            print("Now missing data server: ", listOfNewMissingDataServers)
+
+        # -- Inactive XRD data server
+        inactiveServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'role': 'DATASERVER', 'stateActive': False}))
+        if (len(inactiveServerXRD)):
+            print("Inactive data server: ", inactiveServerXRD)
+
+        # -- Inactive server with data on them
+
+
 # ____________________________________________________________________________
 def main():
     """initialize and run"""
@@ -234,9 +237,19 @@ def main():
     dbUtil = mongoDbUtil("", "admin")
 
     serverCheck = dataServerCheck('/global/homes/s/starxrd/bin/cluster.env')
+    serverCheck.addCollection(dbUtil.getCollection("XRD_DataServers"))
 
-    serverCheck.addCollection('dataServerXRD', dbUtil.getCollection("XRD_DataServers"))
-    serverCheck.createReport('dataServerXRD')
+    serverCheck.prepareReport()
+
+    # -- Set server roles
+    serverCheck.setServerRoles()
+
+    # -- Create report of active and inactive servers
+    serverCheck.updateAllServerList()
+    serverCheck.setServerRoles()
+
+    # -- Create report of active and inactive servers
+    serverCheck.createReport()
 
     dbUtil.close()
 

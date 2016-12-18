@@ -25,7 +25,9 @@ READONLY_USER = 'STAR_XROOTD_ro'
 
 COLLECTION_INDICES = {'HPSS_Files': 'fileFullPath', 'HPSS_PicoDsts': 'filePath', 'XRD_DataServers': 'nodeName',
                       'XRD_PicoDsts': 'filePath', 'XRD_PicoDsts_brokenLink': 'nodeFilePath',
-                      'XRD_PicoDsts_corrupt': 'nodeFilePath', 'XRD_PicoDsts_noHPSS': 'nodeFilePath'}
+                      'XRD_PicoDsts_corrupt': 'nodeFilePath', 'XRD_PicoDsts_noHPSS': 'nodeFilePath',
+                      'Stage_From_HPSS': 'fileFullPath'
+                      }
 
 ##############################################
 

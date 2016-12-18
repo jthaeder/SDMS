@@ -2,30 +2,12 @@
 b'This script requires python 3.4'
 
 """
-Stager which reads staging file and sets stageMarker in HPSS_<Target> collection
+Script to prepare staging of files according to stageing file.
 
-The staging file can have several sets,
+Stager which reads staging file, sets stageMarker in `HPSS_<Target>` collection
+and prepares staging to target.
 
-each set can have the following parameters
-
- 'stageTarget'   : 'XRD'           (For now the only option)
-    as in listOfStageTargets = ['XRD', 'Disk']
-
- 'target': 'picoDst'       (For now the only option)
-    as in  listOfTargets = ['picoDst', 'picoDstJet', 'aschmah']
-
- Data set parameters:
-    as in listOfQueryItems = ['runyear', 'system', 'energy', 'trigger', 'production', 'day', 'runnumber', 'stream']
-
- with example values:
- 'runyear': 'Run10',
- 'system': 'AuAu',
- 'energy': '11GeV',
- 'trigger': 'all',
- 'production': 'P10ih',
- 'day': 149,
- 'runnumber': 11149081,
- 'stream': 'st_physics_adc',
+For detailed documentation, see: README_StageXRD.md
 """
 
 import sys
@@ -65,22 +47,21 @@ class stagerSDMS:
     """ Stager to from HPSS at NERSC"""
 
     # _________________________________________________________
-    def __init__(self, stageingFile, scratchSpace):
+    def __init__(self, dbUtil, stageingFile, scratchSpace):
         self._stageingFile = stageingFile
         self._scratchSpace = scratchSpace
 
-        self._listOfStageTargets = ['XRD', 'Disk']
+        self._listOfStageTargets = ['XRD']  # , 'Disk']
 
         self._listOfQueryItems   = ['runyear', 'system', 'energy',
                                     'trigger', 'production', 'day',
                                     'runnumber', 'stream']
 
-        self._listOfTargets = ['picoDst', 'picoDstJet', 'aschmah']
+        self._listOfTargets = ['picoDst', 'picoDstJet']
 
         # -- base Collection Names
         self._baseColl = {'picoDst': 'PicoDsts',
-                          'picoDstJet': 'PicoDstsJets',
-                          'aschmah': 'ASchmah'}
+                          'picoDstJet': 'PicoDstsJets'}
 
         self._readStagingFile()
 
@@ -99,69 +80,104 @@ class stagerSDMS:
                 print('Error reading staging file: no "sets" found')
                 sys.exit(-1)
 
+            try:
+                self._nCopies = setList['nCopies']
+            except:
+                self._nCopies = 1
+
     # _________________________________________________________
     def _addCollections(self, dbUtil):
         """Get collections from mongoDB."""
 
+        # -- Data server collection
+        self._collServerXRD = dbUtil.getCollection('XRD_DataServers')
+
+        # -- HPPS files collection
+        self._collsHPSSFiles = dbUtil.getCollection('HPSS_Files')
+
+        # -- Collections in HPSS - the 'truth'
         self._collsHPSS = dict.fromkeys(self._listOfTargets)
         for target in self._listOfTargets:
             self._collsHPSS[target] = dbUtil.getCollection('HPSS_' + self._baseColl[target])
 
-        self._collsStage = dict.fromkeys(self._listOfTargets)
+
+        self._collsStageTarget = dict.fromkeys(self._listOfTargets)
         for target in self._listOfTargets:
-            self._collsStage[target] = dict.fromkeys(self._listOfStageTargets)
+            self._collsStageTarget[target] = dict.fromkeys(self._listOfStageTargets)
 
             for stageTarget in self._listOfStageTargets:
-                self._collsStage[target][stageTarget] = dbUtil.getCollection(stageTarget+'_'+ self._baseColl[target])
+                self._collsStageTarget[target][stageTarget] = dbUtil.getCollection(stageTarget+'_'+ self._baseColl[target])
+                foo = stageTarget+'_'+ self._baseColl[target]
+                print("COLL: ", target, stageTarget, foo)
+
+        # -- Collection of files to stage from HPSS
+        self._collStageFromHPSS = dbUtil.getCollection('Stage_From_HPSS')
+
+        # -- Collection of files to stage to stageTarget
+        self._collsStageToStageTarget = dict.fromkeys(self._listOfStageTargets)
+        for stageTarget in self._listOfStageTargets:
+            self._collsStageToStageTarget[stageTarget] = dbUtil.getCollection('Stage_To_'+stageTarget)
 
     # _________________________________________________________
     def markFilesToBeStaged(self):
-        """Mark files to be staged in staging file."""
+        """Mark files to be staged from staging file in `HPSS_<target>`."""
 
+        self.numberOfFilesToBeStaged()
+
+        # -- Reset previous stage markers
         self._resetAllStagingMarks()
 
+        self.numberOfFilesToBeStaged()
+
+        # -- Loop over every set from staging file one-by-one as stageSet
         for stageSet in self._sets:
             if not self._prepareSet(stageSet):
                 continue
-            self._coll.update_many(stageSet, {'$set': {self._targetField: True}})
+
+            # -- Set stage marker using the the stageSet as find query
+            self._collsHPSS[self._target].update_many(stageSet, {'$set': {self._targetField: True}})
 
     # _________________________________________________________
     def _resetAllStagingMarks(self):
-        """Reset all staging marks."""
+        """Reset all staging marks in `HPSS_<target>`."""
 
-        for target, collections in self._collStage.items():
-            for stageTarget, coll in collections.items():
-                targetField = 'staging.stageMarker{0}'.format(stageTarget)
-
-                coll.update_many({}, {'$set': {targetField: False}})
+        # -- Rest all staging markers
+        for target, collection in self._collsHPSS.items():
+            for targetKey in set().union(*(dic.keys() for dic in collection.distinct('staging'))):
+                targetField = "staging.{0}".format(targetKey)
+                collection.update_many({}, {'$set': {targetField: False}})
 
     # _________________________________________________________
-    def listOfFilesToBeStaged(self):
-        """Returns a list of all files to be staged"""
+    def numberOfFilesToBeStaged(self):
+        """Prints number of all files to be staged `HPSS_<target>`."""
 
-        for target, collections in self._collStage.items():
-            for stageTarget, coll in collections.items():
-                targetField = 'staging.stageMarker{0}'.format(stageTarget)
-                nStaged = coll.find({targetField: True}).count()
+        for target, collection in self._collsHPSS.items():
+            for targetKey in set().union(*(dic.keys() for dic in collection.distinct('staging'))):
+                targetField = "staging.{0}".format(targetKey)
+                nStaged = collection.find({targetField: True}).count()
 
-                print('For {0} in collection: {1}'.format(target, coll.name))
-                print('   Files to be staged on {0}: {1}'.format(stageTarget, nStaged))
+                print('For {0} in collection: {1}'.format(target, collection.name))
+                print('   Files to be staged with {0}: {1}'.format(targetField, nStaged))
 
     # _________________________________________________________
     def _prepareSet(self, stageSet):
-        """Prepare set to be staged."""
+        """Prepare set to be staged.
+
+            Do basic checks, returns False if set can't be staged
+        """
 
         # -- Check for stageTarget
         try:
             stageTarget = stageSet['stageTarget']
             if stageTarget not in  self._listOfStageTargets:
                 print('Error reading staging file: Unknown "stageTarget"', stageTarget)
+                self._stageTarget = None
                 return False
             self._targetField = "staging.stageMarker{0}".format(stageTarget)
 
         except:
             print('Error reading staging file: no "stageTarget" found in set' , stageSet)
-            stageTarget = None
+            self._stageTarget = None
             return False
 
         # -- Check for target
@@ -169,12 +185,13 @@ class stagerSDMS:
             target = stageSet['target']
             if target not in  self._listOfTargets:
                 print('Error reading staging file: Unknown "target"', target)
+                self._target = None
                 return False
-            self._coll = self._collsStage[target][stageTarget]
+            self._target = target
 
         except:
             print('Error reading staging file: no "target" found in set' , stageSet)
-            self.target = None
+            self._target = None
             return False
 
         # -- Clean up
@@ -195,41 +212,48 @@ class stagerSDMS:
         return True
 
     # _________________________________________________________
-    def prepareListOfFilesToBeStaged(self, stageTarget):
-        """Check for files to be staged"""
+    def getListOfFilesFromHPSS(self):
+        """Get list of files of type target to be retrieved from HPSS"""
 
-        if stageTarget not in  self._listOfStageTargets:
-            return False
-
-        stageField = 'staging.stageMarker{0}'.format(stageTarget)
-
-        # -- Loop over targets
+        # -- Loop over targets (picoDsts, etc.)
         for target in self._listOfTargets:
 
-            # -- Get all files to be staged
-            #   ... FIX query
-            hpssDocs = self._collsHPSS[target].find({'dataClass': target, stageField: True})])
-            docsSetHPSS = set([item['filePath'] for item in hpssDocs])
+            # -- Loop over stage targets (XRD, disk)
+            for stageTarget in self._listOfStageTargets:
+                stageField = 'staging.stageMarker{0}'.format(stageTarget)
 
-            # -- Get all files on stageing Target
-            stagedDocs = list(self._collsXRDNew[target].find({'storage.location': stageTarget,
-                                                      'dataClass': target}))
-            docsSetStaged = set([item['filePath'] for item in stagedDocs])
+                # -- Get all documents from HPSS to be staged
+                hpssDocs = list(self._collsHPSS[target].find({'target': target, stageField: True}))
+                docsSetHPSS = set([item['filePath'] for item in hpssDocs])
 
-            # -- Document to be staged
-            docsToStage  = docsSetHPSS - docsSetStaged
+                # -- Get all files on stageing Target
+                stagedDocs = list(self._collsStageTarget[target][stageTarget].find({'storage.location': stageTarget,
+                                                                                'target': target}))
+                docsSetStaged = set([item['filePath'] for item in stagedDocs])
 
-            # -- Documents to be removed from stageTarget
-            docsToRemove = docsSetStaged - docsSetHPSS
+                print("hpss   ", len(docsSetHPSS))
+                print("xrd    ", len(docsSetStaged))
+
+                # -- Document to be staged
+                docsToStage = docsSetHPSS - docsSetStaged
+
+                # -- Documents to be removed from stageTarget
+                docsToRemove = docsSetStaged - docsSetHPSS
+
+                print("xrd    ", len(docsSetStaged))
+                print("xrdnew ", len(docsToStage))
+                print("xrdrm  ", len(docsToRemove))
+
+                self._prepareStageColls(docsToStage, target)
 
             # -- Mark Documents as to be unStaged
-            self._collsStage[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
-                                                              { '$set': {'unStageFlag': True} })
+#            self._collsStageTarget[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
+#                                                              { '$set': {'unStageFlag': True} })
 
 
             # -- Make list of documents to be removed
-            mark collection files in staged collection as  to be removed
-            -> use other clear script to explictly remove
+ #           mark collection files in staged collection as  to be removed
+  #          -> use other clear script to explictly remove
 
             listToStageFromHPSS = []
 
@@ -248,15 +272,76 @@ class stagerSDMS:
 #        add tar ball to stage list -> (use hpss tapeordering on it)
 
 
-            self._stageHPSSFiles(listToStageFromHPSS)
+
+
+
 
     #  ____________________________________________________________________________
-    def _stageHPSSFiles(self, stageList):
-        """ Stage list of files from HPSS on to scratch space"""
+    def _prepareStageColls(self, docsToStage, target):
+        """Fill collection of files to stage.
 
-        foo = "dd"
+           - Fill collection to stage from HPSS to Disk
+           - Fill collection to stage from Disk to Target
+           """
+
+        # -- Loop over all paths and gather information
+        for currentPath in docsToStage:
+
+            hpssDoc = self._collsHPSS[target].find_one({'filePath': currentPath})
+
+            if hpssDoc['isInTarFile']:
+                hpssFilePath = hpssDoc['fileFullPathTar']
+            else:
+                hpssFilePath = hpssDoc['fileFullPath']
+
+            # -- Get doc of actual file on HPSS
+            hpssDocFile = self._collsHPSSFiles.find_one({'fileFullPath': hpssFilePath})
+
+            # -- Create doc : stageDocFromHPSS
+            stageDocFromHPSS = {'fileFullPath': hpssFilePath}
+
+            if hpssDoc['isInTarFile']:
+                stageDocFromHPSS['filesInTar'] = hpssDocFile['filesInTar'],
+                stageDocFromHPSS['isInTarFile'] = True
+
+            # -- Update doc in collStageFromHPSS if doc exists otherwise add new
+            self._collStageFromHPSS.find_one_and_update({'fileFullPath': hpssFilePath},
+                                                        {'$inc' : {'nDocs':1},
+                                                         '$addToSet': {'listOfFiles': hpssDoc['fileFullPath']}
+                                                         '$setOnInsert' : stageDocFromHPSS}, upsert = True)
+
+            # -- Get Update doc in collStageToStagingTarget
+            stageDocToTarget = {
+                'filePath':     currentPath
+                'fileFullPath': hpssDoc['fileFullPath'],
+                'fileSize':     hpssDoc['fileSize'],
+                'target':       hpssDoc['target'],
+                'nCopiesExist': 0,
+                'nCopiesMissing': self._nCopies}
+
+            # -- Get nCopies from stageTarget collection
+            xrdDoc = self._collsStageTarget[target][stageTarget].find({'filePath': currentPath})
+            if (xrdDoc)
+                nCopiesExist = xrdDoc['storage']['nCopies']
+                nCopiesMissing = self._nCopies - xrdDoc['storage']['nCopies']
+
+
+            # -- Insert new doc in collStageToStagingTarget
+            try:
+                self._collsStageToStageTarget[stageTarget].insert(stageDocToTarget)
+            except:
+                pass
+
+
+
+
+    #  ____________________________________________________________________________
+    def _stageHPSSFiles(self, stageList, target):
+        """ Stage list of files from HPSS on to scratch space"""
         #-> tape ordering
         #-> stage files ->
+
+
 
     # ____________________________________________________________________________
     def stage(self):
@@ -273,13 +358,13 @@ def main():
 
     # -- Mark files to be staged
     stager.markFilesToBeStaged()
-    stager.listOfFilesToBeStaged()
+    stager.numberOfFilesToBeStaged()
 
     # -- Get list of files to be staged
-    stager.prepareListOfFilesToBeStaged()
+    stager.getListOfFilesFromHPSS()
 
     # -- Stage from staging area to staging location
-    stager.stage()
+#    stager.stage()
 
     dbUtil.close()
 # ____________________________________________________________________________
