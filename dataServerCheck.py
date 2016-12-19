@@ -143,16 +143,18 @@ class dataServerCheck:
         # -- Create server document (is it does not exist yet)
         doc = {
                'nodeName': server,
-               'lastCrawlerRun': '2000-01-01',
+               'lastCrawlerRun': '2000-01-01-01-01',
                'totalSpace': -1,
                'usedSpace': -1,
                'freeSpace': -1
                }
 
+        now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')
+
         # -- Check for state changes and update fields
         if isServerActive:
             self._collServerXRD.find_one_and_update({'nodeName': doc['nodeName']},
-                                                    {'$set': {'lastSeenActive': self._today,
+                                                    {'$set': {'lastSeenActive': now,
                                                               'stateActive': isServerActive},
                                                      '$setOnInsert' : doc}, upsert = True)
 
@@ -257,6 +259,8 @@ class dataServerCheck:
             print("Inactive Servers:", listOfNowInactiveServers)
 
         # ----------------------------------------------------------
+        self._nHoursAgo = 4
+        nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=self._nHoursAgo)).strftime('%Y-%m-%d-%H-%M')
 
         # -- Check if there are nodes where the crawler wasn't run
         noCrawlerRun = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$ne": self._today}}))
