@@ -100,7 +100,7 @@ class stagerSDMS:
         for target in self._listOfTargets:
             self._collsHPSS[target] = dbUtil.getCollection('HPSS_' + self._baseColl[target])
 
-
+        # -- Collections for the staging target
         self._collsStageTarget = dict.fromkeys(self._listOfTargets)
         for target in self._listOfTargets:
             self._collsStageTarget[target] = dict.fromkeys(self._listOfStageTargets)
