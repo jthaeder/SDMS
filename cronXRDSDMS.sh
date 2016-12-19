@@ -45,5 +45,7 @@ pushd /global/homes/s/starxrd/SDMS > /dev/null
 # -- clean XRD
 python cleanXRD.py
 
+# -- check data server
+python dataServerCheck.py
 
 popd > /dev/null
