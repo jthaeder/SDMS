@@ -211,7 +211,57 @@ one-by-one, using the `'nodeFilePath'` field as index.
 * Other files are printed out, so that they can be checked by hand.
 
 ## XRD Check
+Script to check the status of the XRD cluster, fill levels and active nodes.
+It also creates a report.
 
+All scripts described here have to be executed as `starxrd` user, within `cronXRDSDMS.sh`.
+
+### Components
+* `dataServerCheck.py` - *Script to check the XRD cluster states*
+
+### dataServerCheck.py
+Script which reads the `cluster.env` script `/global/homes/s/starxrd/bin/cluster.env``
+script containing the definitions (= 'role') of data servers (and sub groups),
+supervisors, managers and meta-managers. Updates the state of the nodes.
+
+#### Collections
+* read:
+  * **`XRD_<baseColl[target]>`**
+
+* read+write:
+  * **`XRD_DataServers`**
+
+#### Actions
+
+##### Set server roles
+Loops over all nodes in the collection **`XRD_DataServers`** and sets their roles
+accordingly to the definition in `cluster.env` script.
+* If a node has at least one role, set to `inClusterXRD` to `true`, otherwise to `false`.
+* If a node is a data server, set `isDataServerXRD`  to `true`, otherwise to `false`.
+
+##### Check Active state
+Loops over all nodes in the collection **`XRD_DataServers`** and checks if the are
+active or not. The reachability is tested via socket connect to port 22 (ssh).
+
+* If node is active, the `stateActive` is set to `true` and `lastSeenActive` is updated to today YYYY-MM-DD
+* Otherwise `stateActive` is set to `false`.
+
+##### Create report
+Several tests are done and reported:
+* State changes
+  * New active server
+  * New inactive server
+  * New XRD data server
+  * New Missing XRD data server
+* General info - potential harmful
+  * All inactive server
+  * XRD data server - but inactive
+* Crawler info - potential harmful
+  * No CrawlerRun today on all server
+  * No CrawlerRun today on active server
+* Data related info - potential harmful
+  * Server is XRD data server - but as data stored on it
+  * Server is inactive - but as data stored on it
 
 # MongoDB Collections
 
@@ -359,20 +409,26 @@ The entries have to be handled manually and then deleted from the collection.
 Information of all nodes in **`cluster.env`** file, updated daily
 
 ```javascript
-{ "_id" : ObjectId("57a2d3a38579684ab6c45586"),
-  "nodeName" : "mc1526",
+{ "_id" : ObjectId("585680d0aad7fcdcfbc72e93"),
+  "nodeName" : "mc0103",
+  "totalSpace" : NumberLong(3593252417536),
+  "usedSpace" : NumberLong(2489137680384),
+  "freeSpace" : NumberLong(921588015104),
+  "lastCrawlerRun" : "2016-12-19",
   "stateActive" : true,
-  "totalSpace" : NumberLong(7444929003520),
-  "usedSpace" : NumberLong(893526790144),
-  "freeSpace" : NumberLong(6173221539840),  
-  "lastCrawlerRun" : "2016-09-24",
-  "lastSeen" : "2016-09-24" }
+  "lastSeenActive" : "2016-12-19",   
+  "roles" : ["DATASERVER", "MENDEL_ONE_DATASERVER"],
+  "inClusterXRD" : true,
+  "isDataServerXRD" : true }
 ```
 
 * `nodeName`: *actual name of the node* - **Unique index**
-* `stateActive`: *state of node* - **(`boolean`)**
 * `totalSpace`: *total space on all disks* - **(`NumberLong`)**
 * `usedSpace`: *used space on all disks*-  **(`NumberLong`)**
 * `freeSpace`: *free space on all disks* - **(`NumberLong`)**
 * `lastCrawlerRun`: *last time the crawlerXRD run YYYY-MM-DD*
+* `stateActive`: *state of node* - **(`boolean`)**
 * `lastSeenActive`: *last time a node as seen active YYYY-MM-DD*
+* `roles`: *XRD roels of the node, from `cluster.env` file*
+* `inClusterXRD`: *flag: is in XRD cluster with any role*
+* `isDataServerXRD`: *flag: is XRD data server*
