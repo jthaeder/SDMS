@@ -98,14 +98,14 @@ class dataServerCheck:
         return envListCleaned
 
     # _________________________________________________________
-    def addCollections(self):
+    def _addCollections(self):
         """Get collections from mongoDB."""
 
-        self._collServerXRD = dbUtil.getCollection("XRD_DataServers")
+        self._collServerXRD = self._dbUtil.getCollection("XRD_DataServers")
 
         self._collsXRD = dict.fromkeys(self._listOfTargets)
         for target in self._listOfTargets:
-            self._collsXRD[target] = dbUtil.getCollection('XRD_' + self._baseColl[target])
+            self._collsXRD[target] = self._dbUtil.getCollection('XRD_' + self._baseColl[target])
 
     # _________________________________________________________
     def prepareReport(self):
@@ -198,9 +198,15 @@ class dataServerCheck:
             else:
                 inClusterXRD = False
 
+            if 'DATASERVER' in roleSet:
+                isDataServerXRD = True
+            else:
+                isDataServerXRD = False
+
             self._collServerXRD.find_one_and_update({'_id': docNode['_id']},
                                                     {'$set': {'roles': list(roleSet),
-                                                              'inClusterXRD': inClusterXRD}})
+                                                              'inClusterXRD': inClusterXRD,
+                                                              'isDataServerXRD': isDataServerXRD}})
 
     # _________________________________________________________
     def createReport(self):
@@ -253,22 +259,22 @@ class dataServerCheck:
         # ----------------------------------------------------------
 
         # -- Check if there are nodes where the crawler wasn't run
-        noCrawlerRun = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$ne": today}}))
+        noCrawlerRun = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$ne": self._today}}))
         if (len(noCrawlerRun)):
             print("No CrawlerRun today: ", noCrawlerRun)
 
         # -- Check if there are nodes where the crawler wasn't run and active
-        noCrawlerRunActive = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$ne": today}, 'stateActive': False}))
+        noCrawlerRunActive = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$ne": self._today}, 'stateActive': False}))
         if (len(noCrawlerRunActive)):
             print("No CrawlerRun today on active nodes: ", noCrawlerRunActive)
 
         # ----------------------------------------------------------
 
         # -- All nodes which are no data servers
-        noServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'role': { "$ne": 'DATASERVER'}}))
+        noServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'isDataServerXRD': False}))
         if (len(noServerXRD)):
-            print("No data server: ", noServerXRD)
-
+            print("No data server: ", len(noServerXRD), noServerXRD)
+            
         # -- No data servers but data on them
         noServerXRDAndData = self._getListOfNodesWithDataOnThem(noServerXRD)
         if (len(noServerXRDAndData)):
@@ -281,21 +287,20 @@ class dataServerCheck:
 
         # ----------------------------------------------------------
 
-        print(len(listOfNowInactiveServers), len(listOfNowActiveServers), len(listOfNowDataServers))
 
     # _________________________________________________________
     def _getListOfNodesWithDataOnThem(self, nodeList):
         """Get list of files with data stored on them"""
 
-        listWithDataOnNode = set()
+        listWithDataOnNode = []
         for node in nodeList:
             nFilesOnNode = 0
             for target in self._listOfTargets:
-                nFilesOnNode += self._collsXRD[target].find({'storage.detail': node}).count()
-            if (nFilesOnNode > 0)
-                listWithDataOnNode.update(node)
+                nFilesOnNode += self._collsXRD[target].find({'storage.details': node}).count()
+            if (nFilesOnNode > 0):
+                listWithDataOnNode.append(node)
 
-        return listWithDataOnNode
+        return set(listWithDataOnNode)
 
 
 # ____________________________________________________________________________
