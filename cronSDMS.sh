@@ -25,7 +25,7 @@ source /global/homes/j/jthaeder/bin/setbash.sh
 # -- Check if CRON job is still running
 for pid in $(pidof -x `basename $0`); do
     if [ $pid != $$ ]; then
-        echo "PProcess is already running with PID $pid"
+        echo "Process is already running with PID $pid"
 	exit 0
     fi
 done
@@ -67,7 +67,5 @@ echo "-----------------------------------"
 echo "STOPT SDMS - XRD processing"
 echo "-----------------------------------"
 echo " "
-
-
 
 popd > /dev/null

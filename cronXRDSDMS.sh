@@ -25,7 +25,7 @@ source /global/homes/s/starxrd/bin/.setXRDMongoEnv.sh
 # -- Check if CRON job is still running
 for pid in $(pidof -x `basename $0`); do
     if [ $pid != $$ ]; then
-        echo "PProcess is already running with PID $pid"
+        echo "Process is already running with PID $pid"
 	exit 0
     fi
 done
@@ -38,7 +38,6 @@ module use -a /common/star/pkg/Modules
 module load xrootd
 
 #####################################################
-
 
 pushd /global/homes/s/starxrd/SDMS > /dev/null
 

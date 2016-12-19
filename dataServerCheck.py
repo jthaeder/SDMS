@@ -273,8 +273,8 @@ class dataServerCheck:
         # -- All nodes which are no data servers
         noServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'isDataServerXRD': False}))
         if (len(noServerXRD)):
-            print("No data server: ", len(noServerXRD), noServerXRD)
-            
+            print("No data server: ", noServerXRD)
+
         # -- No data servers but data on them
         noServerXRDAndData = self._getListOfNodesWithDataOnThem(noServerXRD)
         if (len(noServerXRDAndData)):
