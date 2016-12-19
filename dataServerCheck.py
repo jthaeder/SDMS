@@ -56,14 +56,20 @@ class dataServerCheck:
     """Check all XRD dataServers"""
 
     # _________________________________________________________
-    def __init__(self, clusterEnvFile):
+    def __init__(self, clusterEnvFile, dbUtil):
         self._today = datetime.datetime.today().strftime('%Y-%m-%d')
         self._clusterEnvFile = clusterEnvFile
 
-        #self._listOfTargets = ['dataServerXRD']
-        #self._collections = dict.fromkeys(self._listOfTargets)
+        self._dbUtil = dbUtil
+
+        self._listOfTargets = ['picoDst', 'picoDstJet', 'aschmah']
+
+        self._baseColl = {'picoDst': 'PicoDsts',
+                          'picoDstJet': 'PicoDstsJets',
+                          'aschmah': 'ASchmah'}
 
         self._processClusterEnvFile()
+        self._addCollections()
 
     # _________________________________________________________
     def _processClusterEnvFile(self):
@@ -92,10 +98,14 @@ class dataServerCheck:
         return envListCleaned
 
     # _________________________________________________________
-    def addCollection(self, collection):
-        """Get collection from mongoDB."""
+    def addCollections(self):
+        """Get collections from mongoDB."""
 
-        self._collServerXRD = collection
+        self._collServerXRD = dbUtil.getCollection("XRD_DataServers")
+
+        self._collsXRD = dict.fromkeys(self._listOfTargets)
+        for target in self._listOfTargets:
+            self._collsXRD[target] = dbUtil.getCollection('XRD_' + self._baseColl[target])
 
     # _________________________________________________________
     def prepareReport(self):
@@ -203,6 +213,8 @@ class dataServerCheck:
         # -- Get new list of all data servers
         listOfNowDataServers = set(d['nodeName'] for d in self._collServerXRD.find({'role': 'DATASERVER'}))
 
+        # ----------------------------------------------------------
+
         # -- New active server
         listOfNewActiveServer = listOfNowActiveServers.difference(self._listOfActiveServers)
         if (len(listOfNewActiveServer)):
@@ -212,6 +224,8 @@ class dataServerCheck:
         listOfNewInactiveServer = listOfNowInactiveServers.difference(self._listOfInactiveServers)
         if (len(listOfNewInactiveServer)):
             print("Now inactive: ", listOfNewInactiveServer)
+
+        # ----------------------------------------------------------
 
         # -- New XRD data server
         listOfNewDataServers = listOfNowDataServers.difference(self._listOfDataServers)
@@ -223,22 +237,65 @@ class dataServerCheck:
         if (len(listOfNewMissingDataServers)):
             print("Now missing data server: ", listOfNewMissingDataServers)
 
+        # ----------------------------------------------------------
+
         # -- Inactive XRD data server
         inactiveServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'role': 'DATASERVER', 'stateActive': False}))
         if (len(inactiveServerXRD)):
             print("Inactive data server: ", inactiveServerXRD)
 
+        # ----------------------------------------------------------
+
         # -- All inactive nodes
-        if (len(inactiveServerXRD)):
-            print("Inactive data server: ", inactiveServerXRD)
-
-
-
-        # -- Inactive server with data on them
         if (len(listOfNowInactiveServers)):
             print("Inactive Servers:", listOfNowInactiveServers)
 
+        # ----------------------------------------------------------
+
+        # -- Check if there are nodes where the crawler wasn't run
+        noCrawlerRun = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$ne": today}}))
+        if (len(noCrawlerRun)):
+            print("No CrawlerRun today: ", noCrawlerRun)
+
+        # -- Check if there are nodes where the crawler wasn't run and active
+        noCrawlerRunActive = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$ne": today}, 'stateActive': False}))
+        if (len(noCrawlerRunActive)):
+            print("No CrawlerRun today on active nodes: ", noCrawlerRunActive)
+
+        # ----------------------------------------------------------
+
+        # -- All nodes which are no data servers
+        noServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'role': { "$ne": 'DATASERVER'}}))
+        if (len(noServerXRD)):
+            print("No data server: ", noServerXRD)
+
+        # -- No data servers but data on them
+        noServerXRDAndData = self._getListOfNodesWithDataOnThem(noServerXRD)
+        if (len(noServerXRDAndData)):
+            print("No data server but data on them: ", noServerXRDAndData)
+
+        # -- Inactive server with data on them
+        inactiveAndData = self._getListOfNodesWithDataOnThem(listOfNowInactiveServers)
+        if (len(inactiveAndData)):
+            print("Inactive server but data on them: ", inactiveAndData)
+
+        # ----------------------------------------------------------
+
         print(len(listOfNowInactiveServers), len(listOfNowActiveServers), len(listOfNowDataServers))
+
+    # _________________________________________________________
+    def _getListOfNodesWithDataOnThem(self, nodeList):
+        """Get list of files with data stored on them"""
+
+        listWithDataOnNode = set()
+        for node in nodeList:
+            nFilesOnNode = 0
+            for target in self._listOfTargets:
+                nFilesOnNode += self._collsXRD[target].find({'storage.detail': node}).count()
+            if (nFilesOnNode > 0)
+                listWithDataOnNode.update(node)
+
+        return listWithDataOnNode
 
 
 # ____________________________________________________________________________
@@ -248,9 +305,7 @@ def main():
     # -- Connect to mongoDB
     dbUtil = mongoDbUtil("", "admin")
 
-    serverCheck = dataServerCheck('/global/homes/s/starxrd/bin/cluster.env')
-    serverCheck.addCollection(dbUtil.getCollection("XRD_DataServers"))
-
+    serverCheck = dataServerCheck('/global/homes/s/starxrd/bin/cluster.env', dbUtil)
     serverCheck.prepareReport()
 
     # -- Set server roles
