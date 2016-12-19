@@ -24,14 +24,14 @@ Script is called on daily basis as normal user.
   [Read more here](README_CrawlerHPSS.md)
 
 * `processXRD.py` - *Scripts to process the output of the `crawlerXRD.py`*  
-  [Read more here](README_XRD.md#process-xrd)
+  [Read more here](README_XRD.md#xrd-process)
 
 ### CRON script: `crawlerXRD.sh`
 Script is called on daily basis on every data storage node.
 
 #### Components
 * `crawlerXRD.py` - *Script to run on data server node, crawling the XRD space*  
-  [Read more here](README_XRD.md#crawler-xrd)
+  [Read more here](README_XRD.md#xrd-crawler)
 
 ### CRON script: `cronXRDSDMS.sh`
 Script is called as `starxrd` user on `pstarxrdr1`. Can be run several times a
@@ -39,10 +39,10 @@ day, but at least once per day.
 
 #### Components
 * `cleanXRD.py` - *Script to clean the processed collections of XRD targets*  
-  [Read more here](README_XRD.md#process-xrd)
+  [Read more here](README_XRD.md#xrd-process)
 
 * `dataServerCheck.py` - *Script to check all data servers - at least once a day*  
-  [Read more here](README_XRD.md#dataserver-check)
+  [Read more here](README_XRD.md#xrd-check)
 
 
 ## tarToHPSS

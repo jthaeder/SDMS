@@ -7,7 +7,7 @@ Script to process the output of the `crawlerXRD.py` script.
 Process `XRD_<baseColl[target]>_new`and `XRD_<baseColl[target]>_missing`
 and update the `XRD_<baseColl[target]>` collections.
 
-For detailed documentation, see: README_ProcessXRD.md
+For detailed documentation, see: README_XRD.md#xrd-process
 """
 
 import sys

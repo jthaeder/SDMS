@@ -2,7 +2,10 @@
 b'This script requires python 3.4'
 
 """
+Scrips which is run to check all XRD data server nodes.
+Findings are stored in mongoDB collections.
 
+For detailed documentation, see: README_XRD.md#xrd-check
 """
 
 import sys
@@ -164,7 +167,7 @@ class dataServerCheck:
             sock.close()
 
         sock.close()
-        
+
         return isServerActive
 
     # _________________________________________________________

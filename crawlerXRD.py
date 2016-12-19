@@ -5,7 +5,7 @@ b'This script requires python 3.4'
 Crawler which runs daily on all data server nodes and inspects the XRD space.
 Findings are stored in mongoDB collections.
 
-For detailed documentation, see: README_CrawlerXRD.md
+For detailed documentation, see: README_XRD.md#xrd-crawler
 """
 
 import sys
