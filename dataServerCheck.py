@@ -149,7 +149,7 @@ class dataServerCheck:
                'freeSpace': -1
                }
 
-        now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')
+        now = datetime.datetime.now().strftime('%Y-%m-%d-%H')
 
         # -- Check for state changes and update fields
         if isServerActive:
