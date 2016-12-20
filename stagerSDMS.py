@@ -347,9 +347,10 @@ class stagerSDMS:
     def _createTapeOrderingHPSS(self):
         """Create tape ordering"""
 
+        # -- Write order file 
         with open("{0}/orderMe.txt".format(SCRATCH_SPACE), "w") as orderMe:
             for hpssDocFile in self._collStageFromHPSS.find({'stageStatus':'unstaged'}):
-                print(hpssDocFile[fileFullPath], file=orderMe)
+                print(hpssDocFile['fileFullPath'], file=orderMe)
 
         # -- Call tape ordering script
         cmdLine = '{0} {1}/orderMe.txt'.format(HPSS_TAPE_ORDER_SCRIPT, SCRATCH_SPACE)
@@ -359,26 +360,28 @@ class stagerSDMS:
         # -- Process output and update collection
         orderIdx = 0
         for text in iter(p.stdout.readline, b''):
-            print(text, orderIdx)
-            ++orderIdx
+            self._collStageFromHPSS.find_one_and_update({'fileFullPath': text.decode("utf-8").rstrip(), 'stageStatus': 'unstaged'},
+                                                        {'$set' : {'orderIdx': orderIdx}})
+            orderIdx += 1
 
-            self._collStageFromHPSS.find_one_and_update({'fileFullPath': text,'stageStatus': 'unstaged'},
-                                                        {'$set' :{ 'orderIdx': orderIdx}}
+        # -- Clean up order file
+        os.remove("{0}/orderMe.txt".format(SCRATCH_SPACE))
 
 
     #  ____________________________________________________________________________
     def stageHPSSFiles(self):
         """Stage list of files from HPSS on to scratch space"""
 
-        # -- Get tape ordering
-        self._createTapeOrderingHPSS()
+        print("stageHPSS")
 
-        return
+        # -- Get tape ordering
+#        self._createTapeOrderingHPSS()
 
         listOfFilesToStage = []
 
         ## -- Decide on to stage file or subFile
-        for hpssDocFile in self._collsHPSSFiles.find({'stageStatus':'unstaged'}):
+        for hpssDocFile in self._collsHPSSFiles.find({'stageStatus':'unstaged'}).sort('orderIdx', pymongo.ASCENDING):
+            print (hpssDocFile['fullFilePath'])
             if not hpssDocFile['isInTarFile']:
                 listOfFilesToStage.append()
 
@@ -425,11 +428,11 @@ def main():
     stager = stagerSDMS(dbUtil, 'stagingRequest.json', os.getenv('SCRATCH', SCRATCH_SPACE))
 
     # -- Mark files to be staged
-    stager.markFilesToBeStaged()
-    stager.numberOfFilesToBeStaged()
+#    stager.markFilesToBeStaged()
+#    stager.numberOfFilesToBeStaged()
 
     # -- Get list of files to be staged
-    stager.getListOfFilesFromHPSS()
+#    stager.getListOfFilesFromHPSS()
 
     # -- Stage files from HPSS
     stager.stageHPSSFiles()
