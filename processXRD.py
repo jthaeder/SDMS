@@ -91,10 +91,8 @@ class processXRD:
     def processNew(self, target):
         """process target"""
 
-        print("Process Target:", target)
-
         if target not in self._listOfTargets:
-            print('Unknown "target"', target, 'for processing')
+            print('Process Target: Unknown "target"', target, 'for processing')
             return
 
         # -- Loop over all documents in the new collection
@@ -233,10 +231,8 @@ class processXRD:
             the node where its missing.
             """
 
-        print("Process Target:", target, "missing")
-
         if target not in self._listOfTargets:
-            print('Unknown "target"', target, 'for processing')
+            print('Process Target: Unknown "target"', target, 'for processing')
             return
 
         # -- Loop over all documents in the new collection
@@ -257,7 +253,7 @@ class processXRD:
             # -- Not a document
             #    - remove it from list dependend on cases
             if not existDoc:
-                print("Doc not even in list", xrdDocMiss['filePath'])
+                print("Process Target: Doc not even in list", xrdDocMiss['filePath'])
                 self._collsXRDMiss[target].delete_one({'_id': xrdDocMiss['_id']})
                 continue
 
@@ -303,5 +299,5 @@ def main():
 
 # ____________________________________________________________________________
 if __name__ == "__main__":
-    print("Start XRD Processing!")
+
     sys.exit(main())
