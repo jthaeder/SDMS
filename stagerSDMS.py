@@ -244,7 +244,7 @@ class stagerSDMS:
                 print("xrdnew ", len(docsToStage))
                 print("xrdrm  ", len(docsToRemove))
 
-                self._prepareStageColls(docsToStage, target)
+                self._prepareStageColls(docsToStage, target, stageTarget)
 
             # -- Mark Documents as to be unStaged
 #            self._collsStageTarget[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
@@ -277,12 +277,14 @@ class stagerSDMS:
 
 
     #  ____________________________________________________________________________
-    def _prepareStageColls(self, docsToStage, target):
+    def _prepareStageColls(self, docsToStage, target, stageTarget):
         """Fill collection of files to stage.
 
            - Fill collection to stage from HPSS to Disk
            - Fill collection to stage from Disk to Target
            """
+
+        print("PREPARE : ", target, stageTarget)
 
         # -- Loop over all paths and gather information
         for currentPath in docsToStage:
@@ -301,18 +303,18 @@ class stagerSDMS:
             stageDocFromHPSS = {'fileFullPath': hpssFilePath}
 
             if hpssDoc['isInTarFile']:
-                stageDocFromHPSS['filesInTar'] = hpssDocFile['filesInTar'],
+                stageDocFromHPSS['filesInTar'] = hpssDocFile['filesInTar']
                 stageDocFromHPSS['isInTarFile'] = True
 
             # -- Update doc in collStageFromHPSS if doc exists otherwise add new
             self._collStageFromHPSS.find_one_and_update({'fileFullPath': hpssFilePath},
                                                         {'$inc' : {'nDocs':1},
-                                                         '$addToSet': {'listOfFiles': hpssDoc['fileFullPath']}
+                                                         '$addToSet': {'listOfFiles': hpssDoc['fileFullPath']},
                                                          '$setOnInsert' : stageDocFromHPSS}, upsert = True)
 
             # -- Get Update doc in collStageToStagingTarget
             stageDocToTarget = {
-                'filePath':     currentPath
+                'filePath':     currentPath,
                 'fileFullPath': hpssDoc['fileFullPath'],
                 'fileSize':     hpssDoc['fileSize'],
                 'target':       hpssDoc['target'],
@@ -320,8 +322,8 @@ class stagerSDMS:
                 'nCopiesMissing': self._nCopies}
 
             # -- Get nCopies from stageTarget collection
-            xrdDoc = self._collsStageTarget[target][stageTarget].find({'filePath': currentPath})
-            if (xrdDoc)
+            xrdDoc = self._collsStageTarget[target][stageTarget].find_one({'filePath': currentPath})
+            if (xrdDoc):
                 nCopiesExist = xrdDoc['storage']['nCopies']
                 nCopiesMissing = self._nCopies - xrdDoc['storage']['nCopies']
 
