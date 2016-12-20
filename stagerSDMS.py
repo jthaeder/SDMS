@@ -33,7 +33,10 @@ from pprint import pprint
 ##############################################
 # -- GLOBAL CONSTANTS
 
-SCRATCH_SPACE = "/scratch"
+SCRATCH_SPACE = "/global/projecta/projectdirs/starprod/stageArea"
+SCRATCH_LIMIT = 10*1024*1024*1024*1024
+
+HPSS_TAPE_ORDER_SCRIPT ="/usr/common/usg/bin/hpss_file_sorter.script"
 
 ##############################################
 
@@ -49,7 +52,8 @@ class stagerSDMS:
     # _________________________________________________________
     def __init__(self, dbUtil, stageingFile, scratchSpace):
         self._stageingFile = stageingFile
-        self._scratchSpace = scratchSpace
+        self._scratchSpace = SCRATCH_SPACE
+        self._scratchLimit = SCRATCH_LIMIT
 
         self._listOfStageTargets = ['XRD']  # , 'Disk']
 
@@ -244,7 +248,11 @@ class stagerSDMS:
                 print("xrdnew ", len(docsToStage))
                 print("xrdrm  ", len(docsToRemove))
 
+                # -- Get collection to stage from HPSS and to stageTarget
                 self._prepareStageColls(docsToStage, target, stageTarget)
+
+
+
 
             # -- Mark Documents as to be unStaged
 #            self._collsStageTarget[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
@@ -255,7 +263,6 @@ class stagerSDMS:
  #           mark collection files in staged collection as  to be removed
   #          -> use other clear script to explictly remove
 
-            listToStageFromHPSS = []
 
             #            get files  which are not in tar file
             #                -> make list of files to be stage
@@ -300,7 +307,8 @@ class stagerSDMS:
             hpssDocFile = self._collsHPSSFiles.find_one({'fileFullPath': hpssFilePath})
 
             # -- Create doc : stageDocFromHPSS
-            stageDocFromHPSS = {'fileFullPath': hpssFilePath}
+            stageDocFromHPSS = {'fileFullPath': hpssFilePath,
+                                'stageStatus': 'unstaged'}
 
             if hpssDoc['isInTarFile']:
                 stageDocFromHPSS['filesInTar'] = hpssDocFile['filesInTar']
@@ -335,13 +343,71 @@ class stagerSDMS:
                 pass
 
 
+    #  ____________________________________________________________________________
+    def _createTapeOrderingHPSS(self):
+        """Create tape ordering"""
+
+        with open("{0}/orderMe.txt".format(SCRATCH_SPACE), "w") as orderMe:
+            for hpssDocFile in self._collStageFromHPSS.find({'stageStatus':'unstaged'}):
+                print(hpssDocFile[fileFullPath], file=orderMe)
+
+        # -- Call tape ordering script
+        cmdLine = '{0} {1}/orderMe.txt'.format(HPSS_TAPE_ORDER_SCRIPT, SCRATCH_SPACE)
+        cmd = shlex.split(cmdLine)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+        # -- Process output and update collection
+        orderIdx = 0
+        for text in iter(p.stdout.readline, b''):
+            print(text, orderIdx)
+            ++orderIdx
+
+            self._collStageFromHPSS.find_one_and_update({'fileFullPath': text,'stageStatus': 'unstaged'},
+                                                        {'$set' :{ 'orderIdx': orderIdx}}
 
 
     #  ____________________________________________________________________________
-    def _stageHPSSFiles(self, stageList, target):
-        """ Stage list of files from HPSS on to scratch space"""
+    def stageHPSSFiles(self):
+        """Stage list of files from HPSS on to scratch space"""
+
+        # -- Get tape ordering
+        self._createTapeOrderingHPSS()
+
+        return
+
+        listOfFilesToStage = []
+
+        ## -- Decide on to stage file or subFile
+        for hpssDocFile in self._collsHPSSFiles.find({'stageStatus':'unstaged'}):
+            if not hpssDocFile['isInTarFile']:
+                listOfFilesToStage.append()
+
+
         #-> tape ordering
         #-> stage files ->
+
+
+    #  ____________________________________________________________________________
+    def _checkScratchSpaceStatus(self, updateValue):
+        """Check free space on disk.
+
+           Inital OS check and recheck from time to time.
+           Otherwise use update of fileSize.
+        """
+
+
+    #  ____________________________________________________________________________
+    def _totalSize(source):
+        """Get Total size of source folder."""
+
+        totalSize = os.path.getsize(source)
+        for item in os.listdir(source):
+            itempath = os.path.join(source, item)
+            if os.path.isfile(itempath):
+                totalSize += os.path.getsize(itempath)
+            elif os.path.isdir(itempath):
+                totalSize += self._totalSize(itempath)
+        return totalSize
 
 
 
@@ -364,6 +430,9 @@ def main():
 
     # -- Get list of files to be staged
     stager.getListOfFilesFromHPSS()
+
+    # -- Stage files from HPSS
+    stager.stageHPSSFiles()
 
     # -- Stage from staging area to staging location
 #    stager.stage()
