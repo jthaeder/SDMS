@@ -429,7 +429,6 @@ class stagerSDMS:
 
                 self._extractHPSSTarFile(hpssDocFile['fileFullPath'], hpssDocFile['stageTarget'],
                                          hpssDocFile['listOfFiles'], hpssDocFile['target'], extractFileWise)
-            break
 
         self._dbUtil.unsetProcessLock("stagingHPSS")
 
