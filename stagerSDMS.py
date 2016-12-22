@@ -34,7 +34,7 @@ from pprint import pprint
 # -- GLOBAL CONSTANTS
 
 SCRATCH_SPACE = "/global/projecta/projectdirs/starprod/stageArea"
-SCRATCH_LIMIT = 10*1024*1024*1024*1024
+SCRATCH_LIMIT = 10*1024 # in GB
 
 HPSS_TAPE_ORDER_SCRIPT ="/usr/common/usg/bin/hpss_file_sorter.script"
 
@@ -55,6 +55,8 @@ class stagerSDMS:
         self._scratchSpace = SCRATCH_SPACE
         self._scratchLimit = SCRATCH_LIMIT
 
+        self._scratchSpaceFlag = True  # still enough space
+
         self._listOfStageTargets = ['XRD']  # , 'Disk']
 
         self._listOfQueryItems   = ['runyear', 'system', 'energy',
@@ -67,9 +69,11 @@ class stagerSDMS:
         self._baseColl = {'picoDst': 'PicoDsts',
                           'picoDstJet': 'PicoDstsJets'}
 
-        self._readStagingFile()
-
+        # -- Get collections
         self._addCollections(dbUtil)
+
+        # -- Get XRD staging parameters
+        self._getXRDStagingParameters()
 
     # _________________________________________________________
     def _readStagingFile(self):
@@ -123,15 +127,52 @@ class stagerSDMS:
             self._collsStageToStageTarget[stageTarget] = dbUtil.getCollection('Stage_To_'+stageTarget)
 
     # _________________________________________________________
+    def _getXRDStagingParameters(self):
+        """Get staging parameters for XRD"""
+
+        self._stageXRD['timeOut'] = 1800
+        self._stageXRD['xrdcpOptions'] = "-v -np -S 4"
+
+        nEntries = self._collServerXRD.find().count()
+        self._stageXRD['tryMax'] = 20 * nEntries
+
+        doc = self._collServerXRD.find_one({'roles':'MENDEL_ONE_MANAGER'})
+        self._stageXRD['server']['MENDEL_1'] = doc['nodeName'] + '-ib.nersc.gov'
+
+        doc = self._collServerXRD.find_one({'roles':'MENDEL_TWO_MANAGER'})
+        self._stageXRD['server']['MENDEL_2'] = doc['nodeName'] + '-ib.nersc.gov'
+
+        doc = self._collServerXRD.find_one({'roles':'META_MANAGER'})
+        self._stageXRD['server']['MENDEL_ALL'] = doc['nodeName'] + '.nersc.gov'
+
+        print(self._stageXRD)
+
+    # _________________________________________________________
+    def prepareStaging(self):
+        """Perpare staging as start of a new cycle"""
+
+        # -- start new staging cycle
+        if not dbUtil.checkSetProcessLock("staging_cycle_active"):
+
+            # -- Read in staging File
+            self._readStagingFile()
+
+            # -- Mark files to be staged in HPSS list
+            self.markFilesToBeStaged()
+            self.numberOfFilesToBeStaged()
+
+            # -- Get list of files to be staged
+            self.getListOfFilesFromHPSS()
+
+            # -- Get tape ordering for HPSS files
+            self.createTapeOrderingHPSS()
+
+    # _________________________________________________________
     def markFilesToBeStaged(self):
         """Mark files to be staged from staging file in `HPSS_<target>`."""
 
-        self.numberOfFilesToBeStaged()
-
         # -- Reset previous stage markers
         self._resetAllStagingMarks()
-
-        self.numberOfFilesToBeStaged()
 
         # -- Loop over every set from staging file one-by-one as stageSet
         for stageSet in self._sets:
@@ -140,28 +181,6 @@ class stagerSDMS:
 
             # -- Set stage marker using the the stageSet as find query
             self._collsHPSS[self._target].update_many(stageSet, {'$set': {self._targetField: True}})
-
-    # _________________________________________________________
-    def _resetAllStagingMarks(self):
-        """Reset all staging marks in `HPSS_<target>`."""
-
-        # -- Rest all staging markers
-        for target, collection in self._collsHPSS.items():
-            for targetKey in set().union(*(dic.keys() for dic in collection.distinct('staging'))):
-                targetField = "staging.{0}".format(targetKey)
-                collection.update_many({}, {'$set': {targetField: False}})
-
-    # _________________________________________________________
-    def numberOfFilesToBeStaged(self):
-        """Prints number of all files to be staged `HPSS_<target>`."""
-
-        for target, collection in self._collsHPSS.items():
-            for targetKey in set().union(*(dic.keys() for dic in collection.distinct('staging'))):
-                targetField = "staging.{0}".format(targetKey)
-                nStaged = collection.find({targetField: True}).count()
-
-                print('For {0} in collection: {1}'.format(target, collection.name))
-                print('   Files to be staged with {0}: {1}'.format(targetField, nStaged))
 
     # _________________________________________________________
     def _prepareSet(self, stageSet):
@@ -216,6 +235,28 @@ class stagerSDMS:
         return True
 
     # _________________________________________________________
+    def _resetAllStagingMarks(self):
+        """Reset all staging marks in `HPSS_<target>`."""
+
+        # -- Rest all staging markers
+        for target, collection in self._collsHPSS.items():
+            for targetKey in set().union(*(dic.keys() for dic in collection.distinct('staging'))):
+                targetField = "staging.{0}".format(targetKey)
+                collection.update_many({}, {'$set': {targetField: False}})
+
+    # _________________________________________________________
+    def numberOfFilesToBeStaged(self):
+        """Prints number of all files to be staged `HPSS_<target>`."""
+
+        for target, collection in self._collsHPSS.items():
+            for targetKey in set().union(*(dic.keys() for dic in collection.distinct('staging'))):
+                targetField = "staging.{0}".format(targetKey)
+                nStaged = collection.find({targetField: True}).count()
+
+                print('For {0} in collection: {1}'.format(target, collection.name))
+                print('   Files to be staged with {0}: {1}'.format(targetField, nStaged))
+
+    # _________________________________________________________
     def getListOfFilesFromHPSS(self):
         """Get list of files of type target to be retrieved from HPSS"""
 
@@ -251,38 +292,6 @@ class stagerSDMS:
                 # -- Get collection to stage from HPSS and to stageTarget
                 self._prepareStageColls(docsToStage, target, stageTarget)
 
-
-
-
-            # -- Mark Documents as to be unStaged
-#            self._collsStageTarget[target][stageTarget].update_many({'filePath' : '$in' : docsToRemove},
-#                                                              { '$set': {'unStageFlag': True} })
-
-
-            # -- Make list of documents to be removed
- #           mark collection files in staged collection as  to be removed
-  #          -> use other clear script to explictly remove
-
-
-            #            get files  which are not in tar file
-            #                -> make list of files to be stage
-            #                    - get files from HPSS to staging area
-            #- use hpss tape ordering
-
-
-            #get list file in tar balls  -> sort by tar file name
-            #            -> disti   nct -> via set
-
-#    loop over tarballs and get nFiles per tar ball
-#    if nFiles is larger then 25%
-#        (get all files from Tarball into stageingArea)
-#        add tar ball to stage list -> (use hpss tapeordering on it)
-
-
-
-
-
-
     #  ____________________________________________________________________________
     def _prepareStageColls(self, docsToStage, target, stageTarget):
         """Fill collection of files to stage.
@@ -308,7 +317,9 @@ class stagerSDMS:
 
             # -- Create doc : stageDocFromHPSS
             stageDocFromHPSS = {'fileFullPath': hpssFilePath,
-                                'stageStatus': 'unstaged'}
+                                'stageStatus': 'unstaged',
+                                'target': target,
+                                'stageTarget': stageTarget}
 
             if hpssDoc['isInTarFile']:
                 stageDocFromHPSS['filesInTar'] = hpssDocFile['filesInTar']
@@ -316,8 +327,7 @@ class stagerSDMS:
 
             # -- Update doc in collStageFromHPSS if doc exists otherwise add new
             self._collStageFromHPSS.find_one_and_update({'fileFullPath': hpssFilePath},
-                                                        {'$inc' : {'nDocs':1},
-                                                         '$addToSet': {'listOfFiles': hpssDoc['fileFullPath']},
+                                                        {'$addToSet': {'listOfFiles': hpssDoc['fileFullPath']},
                                                          '$setOnInsert' : stageDocFromHPSS}, upsert = True)
 
             # -- Get Update doc in collStageToStagingTarget
@@ -326,15 +336,28 @@ class stagerSDMS:
                 'fileFullPath': hpssDoc['fileFullPath'],
                 'fileSize':     hpssDoc['fileSize'],
                 'target':       hpssDoc['target'],
-                'nCopiesExist': 0,
-                'nCopiesMissing': self._nCopies}
+                'stageStatusHPSS': 'unstaged',
+                'stageStatusTarget': 'unstaged'}
 
-            # -- Get nCopies from stageTarget collection
+            # -- Basic set of stage targets if no document exists
+            if self._nCopies = 1:
+                stageDocToTarget['stageTargetList'] = ['MENDEL_ALL']
+            else:
+                stageDocToTarget['stageTargetList'] = ['MENDEL_1', 'MENDEL_2']
+
+            # -- Get list of sub cluster for stageTarget collection if document exists already
             xrdDoc = self._collsStageTarget[target][stageTarget].find_one({'filePath': currentPath})
             if (xrdDoc):
-                nCopiesExist = xrdDoc['storage']['nCopies']
-                nCopiesMissing = self._nCopies - xrdDoc['storage']['nCopies']
 
+                stageTargetList = []
+                for node in xrdDoc['storage']['details']:
+                    nodeDoc = self._collServerXRD.find_one({'nodeName': node})
+                    if not 'MENDEL_ONE_DATASERVER' in nodeDoc['roles']:
+                        stageTargetList.append('MENDEL_1')
+                    if not 'MENDEL_TWO_DATASERVER' in nodeDoc['roles']:
+                        stageTargetList.append('MENDEL_2')
+                if len(stageTargetList)
+                stageDocToTarget[stageTargetList] = stageTargetList
 
             # -- Insert new doc in collStageToStagingTarget
             try:
@@ -342,18 +365,17 @@ class stagerSDMS:
             except:
                 pass
 
-
     #  ____________________________________________________________________________
-    def _createTapeOrderingHPSS(self):
+    def createTapeOrderingHPSS(self):
         """Create tape ordering"""
 
-        # -- Write order file 
-        with open("{0}/orderMe.txt".format(SCRATCH_SPACE), "w") as orderMe:
+        # -- Write order file
+        with open("{0}/orderMe.txt".format(self._scratchSpace), "w") as orderMe:
             for hpssDocFile in self._collStageFromHPSS.find({'stageStatus':'unstaged'}):
                 print(hpssDocFile['fileFullPath'], file=orderMe)
 
         # -- Call tape ordering script
-        cmdLine = '{0} {1}/orderMe.txt'.format(HPSS_TAPE_ORDER_SCRIPT, SCRATCH_SPACE)
+        cmdLine = '{0} {1}/orderMe.txt'.format(HPSS_TAPE_ORDER_SCRIPT, self._scratchSpace)
         cmd = shlex.split(cmdLine)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -365,58 +387,249 @@ class stagerSDMS:
             orderIdx += 1
 
         # -- Clean up order file
-        os.remove("{0}/orderMe.txt".format(SCRATCH_SPACE))
-
+        os.remove("{0}/orderMe.txt".format(self._scratchSpace))
 
     #  ____________________________________________________________________________
     def stageHPSSFiles(self):
-        """Stage list of files from HPSS on to scratch space"""
+        """Stage list of files from HPSS on to scratch space
+
+           Implemented as single squential process to keep file ordering.
+        """
 
         print("stageHPSS")
-
-        # -- Get tape ordering
-#        self._createTapeOrderingHPSS()
-
         listOfFilesToStage = []
 
         ## -- Decide on to stage file or subFile
         for hpssDocFile in self._collsHPSSFiles.find({'stageStatus':'unstaged'}).sort('orderIdx', pymongo.ASCENDING):
-            print (hpssDocFile['fullFilePath'])
+
+            # -- Check if there is enough space on disk
+            if not self._checkScratchSpaceStatus():
+                break
+
+            # -- Use hsi to extract one file only
             if not hpssDocFile['isInTarFile']:
-                listOfFilesToStage.append()
+                self._extractHPSSFile(hpssDocFile['fullFilePath'], hpssDocFile['stageTarget'])
 
+            # -- Use htar to extract from a htar file
+            else
+                print(hpssDocFile['filesInTar'], hpssDocFile['filesInTar']*0.25, len(hpssDocFile['listOfFiles']))
+                extractFileWise = False
 
-        #-> tape ordering
-        #-> stage files ->
+                # -- more the 25% percent of all file need to be extracted -> Get the whole file
+                if hpssDocFile['filesInTar']*0.25 < len(hpssDocFile['listOfFiles']):
+                    extractFileWise = True
 
+                self._extractHPSSTarFile(hpssDocFile['fullFilePath'], hpssDocFile['stageTarget'],
+                                         hpssDocFile['listOfFiles'], hpssDocFile['target'], extractFileWise)
 
     #  ____________________________________________________________________________
-    def _checkScratchSpaceStatus(self, updateValue):
+    def _checkScratchSpaceStatus(self):
         """Check free space on disk.
 
-           Inital OS check and recheck from time to time.
-           Otherwise use update of fileSize.
+           Returs true if still enough space to stage more from HPSS
         """
 
+        if not self._scratchSpaceFlag:
+            return False
 
-    #  ____________________________________________________________________________
-    def _totalSize(source):
-        """Get Total size of source folder."""
+        print("start check")
+        freeSpace = self._getFreeSpaceOnScratchDisk()
+        print("... start check", freeSpace, 1024)
+        usedSpace = self._getUsedSpaceOnStagingArea()
+        print("... start check", usedSpace, self._scratchLimit)
 
-        totalSize = os.path.getsize(source)
-        for item in os.listdir(source):
-            itempath = os.path.join(source, item)
-            if os.path.isfile(itempath):
-                totalSize += os.path.getsize(itempath)
-            elif os.path.isdir(itempath):
-                totalSize += self._totalSize(itempath)
-        return totalSize
+        # -- Check that freespace is larger 1 TB, otherwise set flag to false
+        if freeSpace < 1024:
+            self._scratchSpaceFlag = False
 
+        # -- Check that not more than the limit is used
+        if usedSpace > self._scratchLimit:
+            self._scratchSpaceFlag = False
 
+        print("end check")
+
+        return True
 
     # ____________________________________________________________________________
-    def stage(self):
-        """Stage all files from stageing area to staging location"""
+    def _getFreeSpaceOnScratchDisk(self):
+        """Get free space on disk in GB."""
+
+        # -- Call tape ordering script
+        cmdLine = '/usr/common/usg/bin/prjaquota starprod'
+        cmd = shlex.split(cmdLine)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+        for text in iter(p.stdout.readline, b''):
+            if starprod in text.decode("utf-8").rstrip():
+                line = text.decode("utf-8").rstrip()
+                print("__", line ,"__")
+                print("__", line.split()) ,"__")
+
+                freeSpace =  10   #  in GB  all - used
+                break
+
+        return freeSpace
+
+    # ____________________________________________________________________________
+    def _getUsedSpaceOnStagingArea(self):
+        """Get used space on stageing area in GB."""
+
+        pipe = [{'$match': {'stageStatusHPSS':'staged'}},
+		        {'$group': {'_id': None, 'total': {'$sum': '$fileSize'}}}]
+
+        usedSpace = 0
+        for stageTarget in self._listOfStageTargets:
+            res = self._collsStageToStageTarget[stageTarget].aggregate(pipeline=pipe)
+            usedSpace += res['total']
+
+        return (usedSpace / 1073741824.) # Bytes in GBytes
+
+    # ____________________________________________________________________________
+    def _extractHPSSFile(self, fileFullPath, stageTarget):
+        """Extract one file only using hsi."""
+
+        print("NOT IMPEMENTED YET")
+        #        self._collStageFromHPSS.find_one_and_update({'fileFullPath': fileFullPath)},
+        #                                                                {'$set' : {'stageStatus': 'staged'}})
+
+    # ____________________________________________________________________________
+    def _extractHPSSTarFile(self, fullFilePath, stageTarget, listOfFiles, target, extractFileWise):
+        """Extract from HTAR files using htar."""
+
+        # -- Extract file-by-file and add it to staging target collection as staged
+        if extractFileWise:
+            isExctractSucessful = True
+
+            for targetFile in listOfFiles:
+                print("EXTRACT FILEWISE ", fileFullPath, targetFile)
+
+                # -- htar of single file
+                cmdLine = 'htar -xf {0} {1}'.format(fullFilePath, targetFile))
+                cmdLine = 'ls -la; pwd'
+                cmd = shlex.split(cmdLine)
+                p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, cwd=self._scratchSpace)
+
+                isFileExctractSucessful = False
+                for lineTerminated in iter(p.stdout.readline, b''):
+                    line = lineTerminated.decode("utf-8").rstrip('\t\n')
+                    lineCleaned = ' '.join(line.split())
+
+                    print(lineCleaned)
+
+                    if lineCleaned == "HTAR: HTAR SUCCESSFUL"
+                        isfileExctractSucessful = True
+                        break
+
+                isExctractSucessful += isfileExctractSucessful
+
+                # -- Update staging traget if extraction was successful
+                if isfileExctractSucessful:
+                    self._collsStageToStageTarget[stageTarget].find_one_and_update({'fileFullPath':fileFullPath},
+                                                                                   {'$set': {'stageStatusHPSS': 'staged'}})
+        # -- Extract the full file
+        else:
+            isExctractSucessful = False
+
+            print("EXTRACT FULL FILE ", fileFullPath)
+
+            # -- htar of full file
+            cmdLine = 'htar -xf {0}'.format(fullFilePath))
+            cmdLine = 'ls -la; pwd'
+            cmd = shlex.split(cmdLine)
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT, cwd=self._scratchSpace)
+
+            for lineTerminated in iter(p.stdout.readline, b''):
+                line = lineTerminated.decode("utf-8").rstrip('\t\n')
+                lineCleaned = ' '.join(line.split())
+
+                print(lineCleaned)
+
+                if lineCleaned == "HTAR: HTAR SUCCESSFUL"
+                    isExctractSucessful = True
+                    break
+
+            if isExctractSucessful:
+                for doc in self._collsHPSS[target].find({'fileFullPathTar': fileFullPath}):
+
+                    upsertDoc = {'fileFullPath': doc['fileFullPath'],
+                                'fileSize': doc['fileSize'],
+                                'stageDummy': True}
+
+                    self._collsStageToStageTarget[stageTarget].find_one_and_update({'fileFullPath':fileFullPath},
+                                                                                   {'$set': {'stageStatusHPSS': 'staged'},
+                                                                                    '$setOnInsert': upsertDoc}, upsert = True)
+
+        # -- Update stage status of HPSS stage collection
+        stageStatus = 'staged' if isExctractSucessful else 'failed'
+        self._collStageFromHPSS.find_one_and_update({'fileFullPath': fileFullPath},
+                                                    {'$set' : {'stageStatus': stageStatus}})
+
+    # ____________________________________________________________________________
+    def stageToXRD(self):
+        """Stage all files from stageing area to staging target."""
+
+        # -- Remove dummy files from full file stage
+        self._cleanDummyStagedFiles()
+
+        stageTarget = "XRD"
+        collXRD = self._collsStageToStageTarget[stageTarget]
+
+        # -- Loop over all documents in target collection
+        while True:
+
+            # - Get next unstaged document and set status to staging
+            try:
+                stageDoc = collXRD.find_one_and_update({'stageStatusHPSS': 'staged', 'stageStatusTarget': 'unstaged'}
+                                                       {'$set':{'stageStatusTarget': 'staging'}})
+            except:
+                break
+
+            if not stageDoc:
+                break
+
+
+
+            """
+            - XRD stage file
+	           - once or twice / depending on the targets
+	             - set retry count to twice the number of nodes in XRD_DataServer
+                 - if done delete file from disk
+                 - set doc to XRDstaged and HPSSremoved and set fileSize to 0
+            """
+
+    # ____________________________________________________________________________
+    def _cleanDummyStagedFiles(self):
+        """Remove all dummy staged files"""
+
+        for stageTarget in self._listOfStageTargets:
+            collTarget = self._collsStageToStageTarget[stageTarget]
+
+            fileListToDelete = [doc['fileFullPath'] for doc in collTarget.find({'stageStatusHPSS': 'staged', 'stageDummy': True})]
+            for fileName in fileListToDelete:
+                dummyFile = self._scratchSpace + fileName
+                print("remove me :", self._scratchSpace, fileName)
+                try:
+                    print("try remove me :", dummyFile)
+                    #os.remove(dummyFile)
+                except:
+                    pass
+
+            try:
+                collTarget.delete_many(fileListToDelete)
+            except:
+                pass
+
+    # ____________________________________________________________________________
+    def checkForEndOfStagingCycle(self):
+        """Check for end of staging cycle."""
+
+        pass
+#  -> unset lock when all files in HPSSstage are done or failed
+#  (print out failed)
+
+
 
 # ____________________________________________________________________________
 def main():
@@ -427,18 +640,14 @@ def main():
 
     stager = stagerSDMS(dbUtil, 'stagingRequest.json', os.getenv('SCRATCH', SCRATCH_SPACE))
 
-    # -- Mark files to be staged
-#    stager.markFilesToBeStaged()
-#    stager.numberOfFilesToBeStaged()
-
-    # -- Get list of files to be staged
-#    stager.getListOfFilesFromHPSS()
+    # -- Prepare staging as start of a new staging cycle
+    stager.prepareStaging()
 
     # -- Stage files from HPSS
     stager.stageHPSSFiles()
 
     # -- Stage from staging area to staging location
-#    stager.stage()
+    stager.stageToXRD()
 
     dbUtil.close()
 # ____________________________________________________________________________
