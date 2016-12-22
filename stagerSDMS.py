@@ -403,7 +403,9 @@ class stagerSDMS:
            Implemented as single squential process to keep file ordering.
         """
 
-        print("stageHPSS")
+        if self._dbUtil.checkSetProcessLock("stagingHPSS"):
+            return
+
         listOfFilesToStage = []
 
         ## -- Decide on to stage file or subFile
@@ -415,11 +417,10 @@ class stagerSDMS:
 
             # -- Use hsi to extract one file only
             if not hpssDocFile['isInTarFile']:
-                self._extractHPSSFile(hpssDocFile['fullFilePath'], hpssDocFile['stageTarget'])
+                self._extractHPSSFile(hpssDocFile['fileFullPath'], hpssDocFile['stageTarget'])
 
             # -- Use htar to extract from a htar file
             else:
-                print(hpssDocFile['filesInTar'], hpssDocFile['filesInTar']*0.25, len(hpssDocFile['listOfFiles']))
                 extractFileWise = False
 
                 # -- more the 25% percent of all file need to be extracted -> Get the whole file
@@ -430,6 +431,8 @@ class stagerSDMS:
                                          hpssDocFile['listOfFiles'], hpssDocFile['target'], extractFileWise)
             break
 
+        self._dbUtil.unsetProcessLock("stagingHPSS")
+
     #  ____________________________________________________________________________
     def _checkScratchSpaceStatus(self):
         """Check free space on disk.
@@ -439,7 +442,6 @@ class stagerSDMS:
 
         if not self._scratchSpaceFlag:
             return False
-
 
         freeSpace = self._getFreeSpaceOnScratchDisk()
         usedSpace = self._getUsedSpaceOnStagingArea()
@@ -475,7 +477,7 @@ class stagerSDMS:
     def _getUsedSpaceOnStagingArea(self):
         """Get used space on stageing area in GB."""
 
-        pipe = [{'$match': {'stageStatusHPSS':'unstaged'}},
+        pipe = [{'$match': {'stageStatusHPSS': 'staged'}},
 	        {'$group': {'_id': None, 'total': {'$sum': '$fileSize'}}}]
 
         usedSpace = 0
@@ -503,11 +505,8 @@ class stagerSDMS:
             isExctractSucessful = True
 
             for targetFile in listOfFiles:
-                print("EXTRACT FILEWISE ", fileFullPath, targetFile)
-
                 # -- htar of single file
                 cmdLine = 'htar -xf {0} {1}'.format(fileFullPath, targetFile)
-                cmdLine = 'ls -la; pwd'
                 cmd = shlex.split(cmdLine)
                 p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, cwd=self._scratchSpace)
@@ -517,8 +516,6 @@ class stagerSDMS:
                     line = lineTerminated.decode("utf-8").rstrip('\t\n')
                     lineCleaned = ' '.join(line.split())
 
-                    print(lineCleaned)
-
                     if lineCleaned == "HTAR: HTAR SUCCESSFUL":
                         isfileExctractSucessful = True
                         break
@@ -527,15 +524,11 @@ class stagerSDMS:
 
                 # -- Update staging traget if extraction was successful
                 if isfileExctractSucessful:
-                    print("SUCESS ")
-                    continue
-                    self._collsStageToStageTarget[stageTarget].find_one_and_update({'fileFullPath':fileFullPath},
+                    self._collsStageToStageTarget[stageTarget].find_one_and_update({'fileFullPath': targetFile},
                                                                                    {'$set': {'stageStatusHPSS': 'staged'}})
         # -- Extract the full file
         else:
             isExctractSucessful = False
-
-            print("EXTRACT FULL FILE ", fileFullPath)
 
             # -- htar of full file
             cmdLine = 'htar -xf {0}'.format(fileFullPath)
@@ -547,8 +540,6 @@ class stagerSDMS:
                 line = lineTerminated.decode("utf-8").rstrip('\t\n')
                 lineCleaned = ' '.join(line.split())
 
-                print(lineCleaned)
-
                 if lineCleaned == "HTAR: HTAR SUCCESSFUL":
                     isExctractSucessful = True
                     break
@@ -559,23 +550,23 @@ class stagerSDMS:
                     upsertDoc = {'fileFullPath': doc['fileFullPath'],
                                 'fileSize': doc['fileSize'],
                                 'stageDummy': True}
-
-                    self._collsStageToStageTarget[stageTarget].find_one_and_update({'fileFullPath':fileFullPath},
+                    
+                    self._collsStageToStageTarget[stageTarget].find_one_and_update({'fileFullPath': doc['fileFullPath']},
                                                                                    {'$set': {'stageStatusHPSS': 'staged'},
                                                                                     '$setOnInsert': upsertDoc}, upsert = True)
 
         # -- Update stage status of HPSS stage collection
         stageStatus = 'staged' if isExctractSucessful else 'failed'
-        print("ddddd ", stageStatus)
         self._collStageFromHPSS.find_one_and_update({'fileFullPath': fileFullPath},
                                                     {'$set' : {'stageStatus': stageStatus}})
+
 
     # ____________________________________________________________________________
     def stageToXRD(self):
         """Stage all files from stageing area to staging target."""
 
         # -- Remove dummy files from full file stage
-        self._cleanDummyStagedFiles()
+        self.cleanDummyStagedFiles()
 
         stageTarget = "XRD"
         collXRD = self._collsStageToStageTarget[stageTarget]
@@ -604,7 +595,7 @@ class stagerSDMS:
             """
 
     # ____________________________________________________________________________
-    def _cleanDummyStagedFiles(self):
+    def cleanDummyStagedFiles(self):
         """Remove all dummy staged files"""
 
         for stageTarget in self._listOfStageTargets:
@@ -613,10 +604,8 @@ class stagerSDMS:
             fileListToDelete = [doc['fileFullPath'] for doc in collTarget.find({'stageStatusHPSS': 'staged', 'stageDummy': True})]
             for fileName in fileListToDelete:
                 dummyFile = self._scratchSpace + fileName
-                print("remove me :", self._scratchSpace, fileName)
                 try:
-                    print("try remove me :", dummyFile)
-                    #os.remove(dummyFile)
+                     os.remove(dummyFile)
                 except:
                     pass
 
@@ -647,8 +636,13 @@ def main():
     # -- Prepare staging as start of a new staging cycle
     stager.prepareStaging()
 
+    # -- Clean dummy staged files
+    stager.cleanDummyStagedFiles()
+
     # -- Stage files from HPSS
     stager.stageHPSSFiles()
+
+    stager.cleanDummyStagedFiles()
 
     # -- Stage from staging area to staging location
 #    stager.stageToXRD()
