@@ -549,7 +549,7 @@ class stagerSDMS:
                     upsertDoc = {'fileFullPath': doc['fileFullPath'],
                                 'fileSize': doc['fileSize'],
                                 'stageDummy': True}
-                    
+
                     self._collsStageToStageTarget[stageTarget].find_one_and_update({'fileFullPath': doc['fileFullPath']},
                                                                                    {'$set': {'stageStatusHPSS': 'staged'},
                                                                                     '$setOnInsert': upsertDoc}, upsert = True)
@@ -558,7 +558,6 @@ class stagerSDMS:
         stageStatus = 'staged' if isExctractSucessful else 'failed'
         self._collStageFromHPSS.find_one_and_update({'fileFullPath': fileFullPath},
                                                     {'$set' : {'stageStatus': stageStatus}})
-
 
     # ____________________________________________________________________________
     def stageToXRD(self):
