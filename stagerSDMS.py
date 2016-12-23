@@ -608,10 +608,10 @@ class stagerSDMS:
                 except:
                     pass
 
-            try:
-                collTarget.delete_many(fileListToDelete)
-            except:
-                pass
+                try:
+                    collTarget.delete_one({'fileFullPath': fileName})
+                except:
+                    pass
 
     # ____________________________________________________________________________
     def checkForEndOfStagingCycle(self):
