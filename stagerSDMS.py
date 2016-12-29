@@ -20,6 +20,7 @@ import time
 import socket
 import datetime
 import shlex, subprocess
+from subprocess import STDOUT, check_output
 
 from mongoUtil import mongoDbUtil
 import pymongo
@@ -68,6 +69,10 @@ class stagerSDMS:
                                     'runnumber', 'stream']
 
         self._listOfTargets = ['picoDst', 'picoDstJet']
+
+        # -- Base folders for targets
+        self._baseFolders = {'picoDst': 'picodsts',
+                             'picoDstJet': 'picodsts/JetPicoDsts'}
 
         # -- base Collection Names
         self._baseColl = {'picoDst': 'PicoDsts',
@@ -135,7 +140,8 @@ class stagerSDMS:
         self._stageXRD = dict()
 
         self._stageXRD['timeOut'] = 1800
-        self._stageXRD['xrdcpOptions'] = "-v -np -S 4"
+        # -s isntead -v
+        self._stageXRD['xrdcpOptions'] = "-v -N -S 4"
 
         nEntries = self._collServerXRD.find().count()
         self._stageXRD['tryMax'] = 10 * nEntries
@@ -574,14 +580,91 @@ class stagerSDMS:
 
             # - Get next unstaged document and set status to staging
             try:
-                stageDoc = collXRD.find_one_and_update({'stageStatusHPSS': 'staged', 'stageStatusTarget': 'unstaged'},
-                                                       {'$set':{'stageStatusTarget': 'staging'}})
+#                stageDoc = collXRD.find_one_and_update({'stageStatusHPSS': 'staged', 'stageStatusTarget': 'unstaged'},
+                                                       {'$set':{'stageStatusTarget': 'staging'}})#
+                stageDoc = collXRD.find_one_and_update({'stageStatusHPSS': 'staged', 'stageStatusTarget': 'unstaged'})
             except:
                 break
+
+            print("staging ", stageDoc['fileFullPath'])
 
             if not stageDoc:
                 break
 
+            isStagingSucessful = True:
+
+            # -- Get stage server
+            for serverTarget in stageDoc['stageTargetList']:
+
+                xrdcpCmd = "xrdcp {0} {1}{2} xroot://{3}/star/{4}/{5}".format(self._stageXRD['xrdcpOptions'],
+                    self._scratchSpace, stageDoc['fileFullPath'],
+                    self._stageXRD['server'][serverTarget],
+                    self._baseFolders[doc['target']],
+                    doc['filePath'])
+
+                print(xrdcpCmd)
+                xrdcpCmd = "xrdcp -V"
+
+                continue
+
+                trial = 0
+                while trial < self._stageXRD['tryMax']:
+                    try:
+                        output = check_output(xrdcpCmd, stderr=STDOUT, timeout=self._stageXRD['timeOut'])
+
+                    except subprocess.CalledProcessError:
+                        isStagingSucessful = False:
+                        ret = subprocess.CalledProcessError.returncode
+                        trial += 1
+                        print("   Error XRD Staging: ({0}) {1}", ret, xrdcpCmd)
+                        errorType = 'ErrorCode.{0}'.format(ret)
+                        collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
+                                                    {'$inc':errorType: '1}})
+                        continue
+
+                    except subprocess.TimeoutExpired:
+                        isStagingSucessful = False:
+                        trial += 1
+                        print("   Error XRD Staging: (TimeOut) {0}", xrdcpCmd)
+                        collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
+                                                    {'$inc':{'TimeOutCount': '1}})
+                        continue
+
+                    except:
+                        isStagingSucessful = False:
+                        trial += 1
+                        print("   Error XRD Staging: (Other Error) {0}", xrdcpCmd)
+                        collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
+                                                    {'$inc':{'ErrorCount': '1}})
+                        continue
+
+                    # -- XRD staging successful
+                    break
+
+            if isStagingSucessful:
+                print("ok")
+                return
+
+                # -- Remove file from disk
+                try:
+                    os.remove(fullFilePathOnScratch)
+                except:
+                    pass
+
+                # -- Set status to staged
+                collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
+                                            {'$set':{'stageStatusTarget': 'staged'}})
+
+                # -- Tell servers have new files have been staged
+                self._setFileHasBeenStagedToXRD()
+
+            # -- Staging failed
+            else:
+                print("failed")
+                return
+
+                collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
+                                            {'$set':{'stageStatusTarget': 'failed'}})
 
 
             """
@@ -591,6 +674,13 @@ class stagerSDMS:
                  - if done delete file from disk
                  - set doc to XRDstaged and HPSSremoved and set fileSize to 0
             """
+
+    # ____________________________________________________________________________
+    def _setFileHasBeenStagedToXRD(self):
+        """Add that file as been added to XRD."""
+
+        self._collServerXRD.update_many({'isDataServerXRD': True},
+                                        {'$set' : {'newFilesStaged': True}})
 
     # ____________________________________________________________________________
     def cleanDummyStagedFiles(self):
