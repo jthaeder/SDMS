@@ -220,6 +220,7 @@ class crawlerXRD:
                                                  {'$set': {'freeSpace': free,
                                                            'usedSpace': used,
                                                            'totalSpace': total,
+                                                           'newFilesStaged': False,
                                                            'lastCrawlerRun': self._today},
                                                   '$setOnInsert' : doc}, upsert = True)
 
