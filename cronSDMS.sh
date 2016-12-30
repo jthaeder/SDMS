@@ -57,15 +57,17 @@ echo "STOPT SDMS - HPSS inspector"
 echo "-----------------------------------"
 echo " "
 
-echo "-----------------------------------"
-echo "START SDMS - XRD processing"
-echo "-----------------------------------"
-echo " "
-python processXRD.py
-echo " "
-echo "-----------------------------------"
-echo "STOPT SDMS - XRD processing"
-echo "-----------------------------------"
-echo " "
+#echo "-----------------------------------"
+#echo "START SDMS - XRD processing"
+#echo "-----------------------------------"
+#echo " "
+#python processXRD.py
+#echo " "
+#echo "-----------------------------------"
+#echo "STOPT SDMS - XRD processing"
+#echo "-----------------------------------"
+#echo " "
+
+
 
 popd > /dev/null
