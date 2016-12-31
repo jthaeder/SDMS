@@ -37,10 +37,10 @@ module load xrootd
 
 pushd /global/homes/j/jthaeder/SDMS > /dev/null
 
-echo "START SDMS - XRD processing"
+#echo "START SDMS - XRD processing"
 
 # -- processXRD.py
-#python processXRD.py
+python processXRD.py
 
 # -- stage 
 python stagerSDMS.py
