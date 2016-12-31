@@ -13,7 +13,7 @@
 
 #####################################################
 # -- Source Environemnt
-source /global/homes/s/starxrd/bin/.setXRDMongoEnv.sh
+source ~/bin/.setXRDMongoEnv.sh
 
 #####################################################
 
@@ -24,7 +24,7 @@ module load xrootd
 
 #####################################################
 
-pushd /global/homes/s/starxrd/SDMS > /dev/null
+pushd ~/SDMS > /dev/null
 
 # -- clean XRD
 python cleanXRD.py > /dev/null 2>&1
