@@ -332,5 +332,4 @@ def main():
 
 # ____________________________________________________________________________
 if __name__ == "__main__":
-    print("Start XRD dataServer check")
     sys.exit(main())
