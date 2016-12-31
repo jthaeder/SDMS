@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 #
 # run cron scripts
 #####################################################
@@ -11,31 +11,27 @@
 #
 #####################################################
 
-echo "START SDMS daily cron!"
-echo "-----------------------------------"
-echo " "
-date
-echo " "
 
 #####################################################
 # -- Source Environemnt
 source /global/homes/j/jthaeder/bin/setbash.sh
+#source /global/homes/s/starxrd/bin/.setXRDMongoEnv.sh
 
 #####################################################
-# -- Check if CRON job is still running
-for pid in $(pidof -x `basename $0`); do
-    if [ $pid != $$ ]; then
-        echo "Process is already running with PID $pid"
-	exit 0
-    fi
-done
+
+module load python/3.4.3
+
+module use -a /common/star/pkg/Modules
+module load xrootd
 
 #####################################################
 
 pushd /global/homes/j/jthaeder/SDMS > /dev/null
 
-python crawlerHPSS.py
+# -- processXRD.py
+python processXRD.py
 
-python inspectHPSS.py
+# -- stage
+python stagerSDMS.py
 
 popd > /dev/null

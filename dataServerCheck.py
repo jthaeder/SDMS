@@ -2,7 +2,7 @@
 b'This script requires python 3.4'
 
 """
-Scrips which is run to check all XRD data server nodes.
+Script which is run to check all XRD data server nodes.
 Findings are stored in mongoDB collections.
 
 For detailed documentation, see: README_XRD.md#xrd-check
@@ -34,6 +34,8 @@ from pprint import pprint
 
 SOCKET_TIMEOUT = 5
 
+N_HOURS_AGO = 12
+
 ENV_FIELDS = {'META_MANAGER': "${META_MANAGER}",
               'MENDEL_ONE_MANAGER': "${MENDEL_ONE_MANAGER}",
               'MENDEL_TWO_MANAGER': "${MENDEL_TWO_MANAGER}",
@@ -57,7 +59,8 @@ class dataServerCheck:
 
     # _________________________________________________________
     def __init__(self, clusterEnvFile, dbUtil):
-        self._today = datetime.datetime.today().strftime('%Y-%m-%d')
+        self._nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=N_HOURS_AGO)).strftime('%Y-%m-%d-%H-%M')
+
         self._clusterEnvFile = clusterEnvFile
 
         self._dbUtil = dbUtil
@@ -259,16 +262,14 @@ class dataServerCheck:
             print("Inactive Servers:", listOfNowInactiveServers)
 
         # ----------------------------------------------------------
-        self._nHoursAgo = 4
-        nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=self._nHoursAgo)).strftime('%Y-%m-%d-%H-%M')
 
         # -- Check if there are nodes where the crawler wasn't run
-        noCrawlerRun = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$ne": self._today}}))
+        noCrawlerRun = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$gt": self._nHoursAgo}}))
         if (len(noCrawlerRun)):
-            print("No CrawlerRun today: ", noCrawlerRun)
+            print("No CrawlerRun last 12 hours: ", noCrawlerRun)
 
         # -- Check if there are nodes where the crawler wasn't run and active
-        noCrawlerRunActive = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$ne": self._today}, 'stateActive': False}))
+        noCrawlerRunActive = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$gt": self._nHoursAgo}, 'stateActive': False}))
         if (len(noCrawlerRunActive)):
             print("No CrawlerRun today on active nodes: ", noCrawlerRunActive)
 
@@ -331,5 +332,4 @@ def main():
 
 # ____________________________________________________________________________
 if __name__ == "__main__":
-    print("Start XRD dataServer check")
     sys.exit(main())
