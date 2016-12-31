@@ -629,14 +629,7 @@ class stagerSDMS:
                             isStagingSucessful = True
                             break
 
-
-#                        if err.returncode == 54:
-#                            xrdCode = "NoSpaceLeftOnDevice"
-#                            break
-
-
                         print("   Error XRD Staging: ({0}) {1}\n     {2}".format(err.returncode, xrdCode, err.cmd))
-
                         errorType = 'ErrorCode.{0}'.format(xrdCode)
                         collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']}, 
                                                     {'$inc': {errorType: 1}, '$set': {'trials': trial}})
@@ -727,38 +720,14 @@ class stagerSDMS:
                 except:
                     pass
 
-    # ____________________________________________________________________________
-    def checkForEndOfStagingCycle(self):
-        """Check for end of staging cycle."""
-
-        stageTarget = "XRD"
-        target = 'picoDst'
-
-        collXRD = self._collsStageToStageTarget[stageTarget]
-
-        nDocsXRDUnstaged = collXRD.find({'stageStatusTarget': 'unstaged'}).count()
-        nDocsXRDStaged   = collXRD.find({'stageStatusTarget': 'staged'}).count()
-        nDocsXRDStaging  = collXRD.find({'stageStatusTarget': 'staging'}).count()
-        nDocsXRDFailed   = collXRD.find({'stageStatusTarget': 'failed'}).count()
-        nDocsXRDAll      = collXRD.find().count()
-                                 
-        print(nDocsXRDAll, nDocsXRDUnstaged, nDocsXRDStaged, nDocsXRDStaging, nDocsXRDFailed)
-
-        nDocsHPSSUnstaged = self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).count()
-        nDocsHPSSStaged   = self._collStageFromHPSS.find({'stageStatus': 'staged'}).count()
-        nDocsHPSSFailed   = self._collStageFromHPSS.find({'stageStatus': 'failed'}).count()
-        nDocsHPSSAll      = self._collStageFromHPSS.find().count()
-
-        print(nDocsHPSSAll, nDocsHPSSUnstaged, nDocsHPSSStaged, nDocsHPSSFailed)
-
-        nNewFilesStaged = self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()
-
-        nTargetNew = self._collsStageTargetNew[target][stageTarget].find().count()
-        nTargetMiss = self._collsStageTargetMiss[target][stageTarget].find().count()
-                                        
-        print(nNewFilesStaged, nTargetNew, nTargetMiss)
-
         # -- Remove empty folders on scratch
+        self._rmEmptyFoldersOnScratch()
+
+
+    # ____________________________________________________________________________
+    def _rmEmptyFoldersOnScratch(self):
+        """Remove empty folders on scratch"""
+
         cmdLine = 'find ' + self._scratchSpace + '/project -type d -exec rmdir --ignore-fail-on-non-empty "{}" +' 
         cmd = shlex.split(cmdLine)
 
@@ -767,25 +736,62 @@ class stagerSDMS:
         except:
             pass
 
+    # ____________________________________________________________________________
+    def printStagingStats(self):
+        """Print staging statistics."""
+
+        stageTarget = "XRD"
+        target = 'picoDst'
+
+        collXRD = self._collsStageToStageTarget[stageTarget]
+
+        print(" All Docs in {}: {}".format(collXRD.name, collXRD.find().count()))
+        print("   Unstaged: {}".format(collXRD.find({'stageStatusTarget': 'unstaged'}).count()))
+        print("   Staged  : {}".format(collXRD.find({'stageStatusTarget': 'staged'}).count()))
+        print("   Dummy   : {}".format(collXRD.find({'stageStatusHPSS': 'staged', 'stageDummy': True}).count()))
+        print("   Failed  : {}".format(collXRD.find({'stageStatusTarget': 'failed'}).count()))
+        print("   Staging : {}".format(collXRD.find({'stageStatusTarget': 'staging'}).count()))
+        print(" ")
+        print(" All Docs in {}: {}".format(self._collStageFromHPSS.name, self._collStageFromHPSS.find().count()))
+        print("   Unstaged: {}".format(self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).count()))
+        print("   Staged  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'staged'}).count()))
+        print("   Failed  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'failed'}).count()))
+        print(" ")
+        print(" Number of dataserver with new files staged (no new XRD Crawler Run: {}".format(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()))
+        print(" Unprocessed new files on data server: {}".format(self._collsStageTargetNew[target][stageTarget].find().count()))
+        print(" Unprocessed missing files on data server: {}".format(self._collsStageTargetMiss[target][stageTarget].find().count()))
+
+
+    # ____________________________________________________________________________
+    def checkForEndOfStagingCycle(self):
+        """Check for end of staging cycle."""
+
+        stageTarget = "XRD"
+        target = 'picoDst'
+
+        # -- Print staging stats
+        self.printStagingStats()
+
+
         # -- XRD Crawler hasn't finshed everywhere
-        if nNewFilesStaged > 0:
+        if self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count() > 0:
             return
                                           
         # -- XRD Process hasn't finished
-        if nTargetNew > 0 or nTargetMiss > 0:
+        if self._collsStageTargetNew[target][stageTarget].find().count() > 0 or self._collsStageTargetMiss[target][stageTarget].find().count() > 0:
             return
 
         # -- HPSS nothing left to stage 
-        if nDocsHPSSUnstaged > 0:
+        if self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).count() > 0:
             return
 
         # -- XRD nothing left to stage 
-        if nDocsHPSSUnstaged > 0:
+        if collXRD.find({'stageStatusTarget': 'unstaged'}).count() > 0:
             return
  
         # -- End of cycle
         print("End of cycle")
-        return
+
 
         # - rm staged HPSS
         self._collStageFromHPSS.delete_many({'stageStatus': 'staged'})
@@ -827,5 +833,4 @@ def main():
 
 # ____________________________________________________________________________
 if __name__ == "__main__":
-    print("Start SDMS Stager!")
     sys.exit(main())
