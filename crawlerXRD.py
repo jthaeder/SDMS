@@ -51,7 +51,7 @@ class crawlerXRD:
 
     # _________________________________________________________
     def __init__(self, dbUtil):
-        self._today = datetime.datetime.today().strftime('%Y-%m-%d')
+        self._now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')
         self._nodeName = socket.getfqdn().split('.')[0]
 
         # -- possible targets
@@ -214,13 +214,13 @@ class crawlerXRD:
         # -- update DB
         doc = {'nodeName': self._nodeName,
                'stateActive': False,
-               'lastSeenActive': '2000-01-01',}
+               'lastSeenActive': '2000-01-01-01-01',}
 
         self._collDataServer.find_one_and_update({'nodeName': doc['nodeName']},
                                                  {'$set': {'freeSpace': free,
                                                            'usedSpace': used,
                                                            'totalSpace': total,
-                                                           'lastCrawlerRun': self._today},
+                                                           'lastCrawlerRun': self._now},
                                                   '$setOnInsert' : doc}, upsert = True)
 
 # ____________________________________________________________________________
