@@ -264,14 +264,14 @@ class dataServerCheck:
         # ----------------------------------------------------------
 
         # -- Check if there are nodes where the crawler wasn't run
-        noCrawlerRun = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$gt": self._nHoursAgo}}))
+        noCrawlerRun = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$lt": self._nHoursAgo}}))
         if (len(noCrawlerRun)):
-            print("No CrawlerRun last 12 hours: ", noCrawlerRun)
+            print("No CrawlerRun last", N_HOURS_AGO, "hours: ", noCrawlerRun)
 
         # -- Check if there are nodes where the crawler wasn't run and active
-        noCrawlerRunActive = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$gt": self._nHoursAgo}, 'stateActive': False}))
+        noCrawlerRunActive = set(d['nodeName'] for d in self._collServerXRD.find({'lastCrawlerRun': {"$lt": self._nHoursAgo}, 'stateActive': False}))
         if (len(noCrawlerRunActive)):
-            print("No CrawlerRun today on active nodes: ", noCrawlerRunActive)
+            print("No CrawlerRun last", N_HOURS_AGO, "on inactive nodes: ", noCrawlerRunActive)
 
         # ----------------------------------------------------------
 
