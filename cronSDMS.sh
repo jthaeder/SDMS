@@ -3,7 +3,6 @@
 # run cron scripts
 #####################################################
 # Script to be called by daily cron.
-# Runs different suites for SDMS
 # ---------------------------------------------------
 # HPSS:
 #  - crawlerHPSS.py
@@ -11,15 +10,20 @@
 #
 #####################################################
 
-echo "START SDMS daily cron!"
-echo "-----------------------------------"
-echo " "
-date
-echo " "
-
 #####################################################
 # -- Source Environemnt
-source /global/homes/j/jthaeder/bin/setbash.sh
+source ~starxrd/bin/.setXRDMongoEnv.sh
+source ~starxrd/SDMS/controlSDMS.sh
+
+#####################################################
+# -- Load Modules
+module load python/3.4.3
+
+#####################################################
+# -- Check if script should be run
+if [ "${runCronSDMS}" == "off" ] ; then
+  exit 0
+fi
 
 #####################################################
 # -- Check if CRON job is still running
@@ -32,7 +36,7 @@ done
 
 #####################################################
 
-pushd /global/homes/j/jthaeder/SDMS > /dev/null
+pushd ~/SDMS > /dev/null
 
 python crawlerHPSS.py
 

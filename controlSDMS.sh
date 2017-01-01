@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+# Script to control different cron jobs
+#####################################################
+# Script is sourced by
+#  - cronSDMS.sh
+#  - cronSDMSHourly.sh
+#  - cronXRDSDMS.sh
+#  - crawlerXRD.sh
+#####################################################
+
+# ---------------------------------------------------
+# -- Runs Daily CRON : cronSDMS.sh
+# ---------------------------------------------------
+#    Runs on HPSS:
+#     - crawlerHPSS.py
+#     - inspectHPSS.py
+# ---------------------------------------------------
+#    Current CRON options:
+#      node: pdsf8
+#      user: starofl
+#      schedule: 37 16 * * *
+# ---------------------------------------------------
+#   Use "on" or "off"
+runCronSDMS=on
+
+# ---------------------------------------------------
+# -- Runs Daily CRON : cronSDMSHourly.sh
+# ---------------------------------------------------
+#    Runs XRD:
+#     - processXRD.py
+#    Runs Stager (HPSS and XRD)
+#     - stagerSDMS.py
+# ---------------------------------------------------
+#    Current CRON options:
+#      node: pdsf8
+#      user: starofl
+#      schedule: 07 * * * *
+# ---------------------------------------------------
+#   Use "on" or "off"
+runCronSDMSHourly=on
+
+# ---------------------------------------------------
+# -- Runs Daily CRON : runCronXRDSDMS.sh
+# ---------------------------------------------------
+#    Runs XRD:
+#     - cleanXRD.py
+#     - dataServerCheck.py
+# ---------------------------------------------------
+#    Current CRON options:
+#      node: pstarxrdr1
+#      user: starxrd
+#      schedule: 51 * * * *
+# ---------------------------------------------------
+#   Use "on" or "off"
+runCronXRDSDMS=on
+
+# ---------------------------------------------------
+# -- Runs Daily CRON : runCrawlerXRD.sh
+# ---------------------------------------------------
+#    Runs XRD:
+#     - crawlerXRD.py
+# ---------------------------------------------------
+#    Current CRON options:
+#      node: <nodes>
+#      user: starxrd
+#      # schedule: 51 * * * *
+# ---------------------------------------------------
+#   Use "on" or "off"
+runCrawlerXRD=on
+#   Regex of nodes not to run, eg.
+#   - runNotOnNodes="mc0301|mc0201"
+#   - runNotOnNodes="mc020[0-1]"
+#   - runNotOnNodes="" < run on all nodes
+runNotOnNodes=""

@@ -3,7 +3,6 @@
 # run cron scripts
 #####################################################
 # Script to be called by daily cron as starxrduser
-
 # ---------------------------------------------------
 # XRD:
 #  - cleanXRD.py
@@ -13,23 +12,28 @@
 
 #####################################################
 # -- Source Environemnt
-source ~/bin/.setXRDMongoEnv.sh
+source ~starxrd/bin/.setXRDMongoEnv.sh
+source ~starxrd/SDMS/controlSDMS.sh
 
 #####################################################
-
+# -- Load Modules
 module load python/3.4.3
 
 module use -a /common/star/pkg/Modules
 module load xrootd
 
 #####################################################
+# -- Check if script should be run
+if [ "${runCronXRDSDMS}" == "off" ] ; then
+  exit 0
+fi
+
+#####################################################
 
 pushd ~/SDMS > /dev/null
 
-# -- clean XRD
 python cleanXRD.py > /dev/null 2>&1
 
-# -- check data server
 python dataServerCheck.py
 
 popd > /dev/null
