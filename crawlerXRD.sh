@@ -11,13 +11,12 @@
 
 #####################################################
 # -- Source Environemnt
-#source ~starxrd/bin/.setXRDMongoEnv.sh
-#source ~starxrd/SDMS/controlSDMS.sh
-source ./controlSDMS.sh
+source ~starxrd/bin/.setXRDMongoEnv.sh
+source ~starxrd/SDMS/controlSDMS.sh
 
 #####################################################
 # -- Load Modules
-#module load python/3.4.3
+module load python/3.4.3
 
 #####################################################
 # -- Check if script should be run at all
@@ -27,20 +26,12 @@ fi
 
 #####################################################
 # -- Check if script should be run on this node
+HOST=`${HOME}/bin/nname 2> /dev/null || uname -n`
 
-HOST=mc0201
-echo ${runNotOnNodes}
 echo ${HOST} | egrep -e "${runNotOnNodes}" > /dev/null
 if [[ ! -z ${runNotOnNodes} &&  "$?" == "0" ]] ; then
-  echo "don;t run"
   exit 0
 fi
-
-
-echo "run"
-
-exit
-
 
 #####################################################
 
