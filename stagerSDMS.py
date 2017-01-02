@@ -437,7 +437,7 @@ class stagerSDMS:
                 extractFileWise = False
 
                 # -- more the 25% percent of all file need to be extracted -> Get the whole file
-                if hpssDocFile['filesInTar']*0.25 < len(hpssDocFile['listOfFiles']):
+                if hpssDocFile['filesInTar']*0.25 > len(hpssDocFile['listOfFiles']):
                     extractFileWise = True
 
                 self._extractHPSSTarFile(hpssDocFile['fileFullPath'], hpssDocFile['stageTarget'],
