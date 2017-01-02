@@ -108,6 +108,14 @@ class crawlerXRD:
                                                                        'storage.location': 'XRD',
                                                                        'storage.details': self._nodeName},
                                                                       {'filePath': True, '_id': False}))
+
+        # -- Check if server is not a dataserver
+        if self._collDataServer.find({'nodeName': self._nodeName, 'isDataServerXRD': True}).count() == 0:
+            # -- Add files to DB as missing - if there are some
+            if listOfFilesOnNode:
+                self._insertMissingFilePaths(listOfFilesOnNode, target)
+            return
+
         # -- Get working directoty
         self._workDir = os.path.join(XROOTD_PREFIX, self._baseFolders[target])
 
