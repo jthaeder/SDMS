@@ -30,6 +30,8 @@ from pymongo import bulk
 
 from pprint import pprint
 
+from stagerSDMS import stagerSDMS
+
 # -- Check for a proper Python Version
 if sys.version[0:3] < '3.0':
     print ('Python version 3.0 or greater required (found: {0}).'.format(sys.version[0:5]))
@@ -43,9 +45,12 @@ def main():
     dbUtil = mongoDbUtil("", "admin")
 
     serverCheck = dataServerCheck('/global/homes/s/starxrd/bin/cluster.env', dbUtil)
-
     # -- Create report of active and inactive servers
     serverCheck.createFullReport()
+
+    stager = stagerSDMS(dbUtil, 'stagingRequest.json', os.getenv('SCRATCH', SCRATCH_SPACE))
+    # -- Print staging stats
+    stager.printStagingStats()
 
     dbUtil.close()
 

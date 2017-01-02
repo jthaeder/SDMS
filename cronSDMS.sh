@@ -42,4 +42,6 @@ python crawlerHPSS.py
 
 python inspectHPSS.py
 
+python reportSDMS.py
+
 popd > /dev/null
