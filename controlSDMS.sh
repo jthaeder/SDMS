@@ -10,6 +10,22 @@
 #####################################################
 
 # ---------------------------------------------------
+# -- MASTER SWITCHES
+# ---------------------------------------------------
+# - Run no SDMS at all -> Set to off
+runSDMS=on
+# ---------------------------------------------------
+# - No MongoDB availble -> Set to off
+runOnMongoDB=on
+# ---------------------------------------------------
+# - No XRD availble -> Set to off
+runOnXRD=on
+# ---------------------------------------------------
+# - No HPSS availble -> Set to off
+runOnHPSS=on
+# ---------------------------------------------------
+
+# ---------------------------------------------------
 # -- Runs Daily CRON : cronSDMS.sh
 # ---------------------------------------------------
 #    Runs on HPSS:
@@ -73,3 +89,23 @@ runCrawlerXRD=on
 #   - runNotOnNodes="mc020[0-1]"
 #   - runNotOnNodes="" < run on all nodes
 runNotOnNodes=""
+
+# ---------------------------------------------------
+# -- EXECUTE MASTER SWITCHES - DO NOT checkForEndOfStagingCycle
+# ---------------------------------------------------
+if [[ "${runSDMS}" == "off" || "${runOnMongoDB}" == "off" ]] ; then
+  runCronSDMS=off
+  runCronSDMSHourly=off
+  runCronXRDSDMS=off
+  runCrawlerXRD=off
+fi
+
+if [ "${runOnXRD}" == "off" ] ; then
+  runCronXRDSDMS=off
+  runCronSDMSHourly=off
+fi
+
+if [ "${runOnHPSS}" == "off" ] ; then
+  runCronSDMS=off
+  runCronSDMSHourly=off
+fi
