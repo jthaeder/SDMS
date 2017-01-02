@@ -53,7 +53,7 @@ class stagerSDMS:
     """ Stager to from HPSS at NERSC"""
 
     # _________________________________________________________
-    def __init__(self, dbUtil, stageingFile, scratchSpace):
+    def __init__(self, dbUtil, stageingFile):
         self._stageingFile = stageingFile
         self._scratchSpace = SCRATCH_SPACE
         self._scratchLimit = SCRATCH_LIMIT
@@ -760,8 +760,10 @@ class stagerSDMS:
         print(" Number of dataserver with new files staged (no new XRD Crawler Run: {}".format(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()))
         print(" Unprocessed new files on data server: {}".format(self._collsStageTargetNew[target][stageTarget].find().count()))
         print(" Unprocessed missing files on data server: {}".format(self._collsStageTargetMiss[target][stageTarget].find().count()))
-
-
+        print(" ")
+        print(" Free space on scratch disk: {}GB".format(self._getFreeSpaceOnScratchDisk()))
+        print(" Used space in staging area: {}GB".format(self._getUsedSpaceOnStagingArea()))
+        
     # ____________________________________________________________________________
     def checkForEndOfStagingCycle(self):
         """Check for end of staging cycle."""
@@ -810,7 +812,7 @@ def main():
     # -- Connect to mongoDB
     dbUtil = mongoDbUtil("", "admin")
 
-    stager = stagerSDMS(dbUtil, 'stagingRequest.json', os.getenv('SCRATCH', SCRATCH_SPACE))
+    stager = stagerSDMS(dbUtil, 'stagingRequest.json')
 
     # -- Prepare staging as start of a new staging cycle
     stager.prepareStaging()

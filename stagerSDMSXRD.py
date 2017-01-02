@@ -57,7 +57,7 @@ def main():
     # -- Connect to mongoDB
     dbUtil = mongoDbUtil("", "admin")
 
-    stager = stagerSDMS(dbUtil, 'stagingRequest.json', os.getenv('SCRATCH', SCRATCH_SPACE))
+    stager = stagerSDMS(dbUtil, 'stagingRequest.json')
 
     # -- Clean dummy staged files
     stager.cleanDummyStagedFiles()
