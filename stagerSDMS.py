@@ -761,8 +761,10 @@ class stagerSDMS:
         print(" Unprocessed new files on data server: {}".format(self._collsStageTargetNew[target][stageTarget].find().count()))
         print(" Unprocessed missing files on data server: {}".format(self._collsStageTargetMiss[target][stageTarget].find().count()))
         print(" ")
-        print(" Free space on scratch disk: {}GB".format(self._getFreeSpaceOnScratchDisk()))
-        print(" Used space in staging area: {}GB".format(self._getUsedSpaceOnStagingArea()))
+        print(" Free space on scratch disk: {} GB".format(self._getFreeSpaceOnScratchDisk()))
+        print(" Used space in staging area: {} GB".format(self._getUsedSpaceOnStagingArea()))
+        print(" ")
+        print(" ")
         
     # ____________________________________________________________________________
     def checkForEndOfStagingCycle(self):
@@ -792,8 +794,6 @@ class stagerSDMS:
             return
 
         # -- End of cycle
-        print("End of cycle")
-
 
         # - rm staged HPSS
         self._collStageFromHPSS.delete_many({'stageStatus': 'staged'})

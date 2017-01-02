@@ -202,7 +202,7 @@ def main():
     inspect.setCollections(collHpssFiles, collHpssPicoDsts, collHpssDuplicates)
 
     # -- Print General Info
-    inspect.generalInfo()
+#    inspect.generalInfo()
 
     # -- Check if all files are still on HPSS
     inspect.inspector()
@@ -223,5 +223,4 @@ def main():
     dbUtil.close()
 # ____________________________________________________________________________
 if __name__ == "__main__":
-    print("Start HPSS Inspect!")
     sys.exit(main())

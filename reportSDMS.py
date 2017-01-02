@@ -48,7 +48,8 @@ def main():
     # -- Create report of active and inactive servers
     serverCheck.createFullReport()
 
-    stager = stagerSDMS(dbUtil, 'stagingRequest.json', os.getenv('SCRATCH', SCRATCH_SPACE))
+    stager = stagerSDMS(dbUtil, 'stagingRequest.json')
+    stager.cleanDummyStagedFiles()  
     # -- Print staging stats
     stager.printStagingStats()
 
@@ -56,5 +57,4 @@ def main():
 
 # ____________________________________________________________________________
 if __name__ == "__main__":
-    print("Start XRD dataServer check")
     sys.exit(main())

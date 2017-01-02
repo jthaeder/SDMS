@@ -40,8 +40,8 @@ pushd ~/SDMS > /dev/null
 
 python crawlerHPSS.py
 
-python inspectHPSS.py
-
 python reportSDMS.py
+
+python inspectHPSS.py
 
 popd > /dev/null
