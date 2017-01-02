@@ -605,7 +605,6 @@ class stagerSDMS:
 
                 # -- Allow for several trials : 'tryMax'
                 trial = 0
-                print(self._stageXRD['tryMax'])
                 while trial < self._stageXRD['tryMax']:
                     trial += 1
                     try:
