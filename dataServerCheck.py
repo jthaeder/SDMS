@@ -111,7 +111,7 @@ class dataServerCheck:
             self._collsXRD[target] = self._dbUtil.getCollection('XRD_' + self._baseColl[target])
 
     # _________________________________________________________
-    def prepareReport(self):
+    def prepareChangeReport(self):
         """Get status before the update."""
 
         # -- Get list of already active or inactive server
@@ -214,8 +214,8 @@ class dataServerCheck:
                                                               'isDataServerXRD': isDataServerXRD}})
 
     # _________________________________________________________
-    def createReport(self):
-        """Create a report on the list of servers of the target."""
+    def createChangeReport(self):
+        """Create a report on the state change list of servers of the target."""
 
         # -- Get list of now active or inactive server
         listOfNowActiveServers = set(d['nodeName'] for d in self._collServerXRD.find({'stateActive': True}))
@@ -248,7 +248,9 @@ class dataServerCheck:
         if (len(listOfNewMissingDataServers)):
             print("Now missing data server: ", listOfNewMissingDataServers)
 
-        # ----------------------------------------------------------
+    # _________________________________________________________
+    def createFullReport(self):
+        """Create a report on the list of servers of the target."""
 
         # -- Inactive XRD data server
         inactiveServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'role': 'DATASERVER', 'stateActive': False}))
@@ -258,6 +260,7 @@ class dataServerCheck:
         # ----------------------------------------------------------
 
         # -- All inactive nodes
+        listOfNowInactiveServers = set(d['nodeName'] for d in self._collServerXRD.find({'stateActive': False}))
         if (len(listOfNowInactiveServers)):
             print("Inactive Servers:", listOfNowInactiveServers)
 
@@ -290,9 +293,6 @@ class dataServerCheck:
         if (len(inactiveAndData)):
             print("Inactive server but data on them: ", inactiveAndData)
 
-        # ----------------------------------------------------------
-
-
     # _________________________________________________________
     def _getListOfNodesWithDataOnThem(self, nodeList):
         """Get list of files with data stored on them"""
@@ -307,7 +307,6 @@ class dataServerCheck:
 
         return set(listWithDataOnNode)
 
-
 # ____________________________________________________________________________
 def main():
     """initialize and run"""
@@ -316,7 +315,7 @@ def main():
     dbUtil = mongoDbUtil("", "admin")
 
     serverCheck = dataServerCheck('/global/homes/s/starxrd/bin/cluster.env', dbUtil)
-    serverCheck.prepareReport()
+    serverCheck.prepareChangeReport()
 
     # -- Set server roles
     serverCheck.setServerRoles()
@@ -325,8 +324,11 @@ def main():
     serverCheck.updateAllServerList()
     serverCheck.setServerRoles()
 
+    # -- Create report of state changes ofactive and inactive servers
+    serverCheck.createChangeReport()
+
     # -- Create report of active and inactive servers
-    serverCheck.createReport()
+    serverCheck.createFullReport()
 
     dbUtil.close()
 
