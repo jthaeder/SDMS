@@ -136,7 +136,6 @@ class hpssUtil:
         # -- Loop of the list of subfolders
         for subFolder in iter(p.stdout.readline, b''):
             if "Run" in subFolder.decode("utf-8").rstrip():
-                print("SubFolder: ", subFolder.decode("utf-8").rstrip())
                 self._parseSubFolder(subFolder.decode("utf-8").rstrip())
 
     # _________________________________________________________
