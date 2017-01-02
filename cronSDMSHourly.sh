@@ -30,7 +30,6 @@ if [ "${runCronSDMSHourly}" == "off" ] ; then
 fi
 
 #####################################################
-echo "RUN HOURLY"
 
 pushd ~/SDMS > /dev/null
 

@@ -773,10 +773,6 @@ class stagerSDMS:
         stageTarget = "XRD"
         target = 'picoDst'
 
-        # -- Print staging stats
-        self.printStagingStats()
-
-
         # -- XRD Crawler hasn't finshed everywhere
         if self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count() > 0:
             return
@@ -804,6 +800,8 @@ class stagerSDMS:
         # - end of staging cycle
         self._dbUtil.unsetProcessLock("staging_cycle_active")
 
+        # -- Print staging stats
+        self.printStagingStats()
 
 # ____________________________________________________________________________
 def main():
