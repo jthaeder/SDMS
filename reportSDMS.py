@@ -30,24 +30,6 @@ from pymongo import bulk
 
 from pprint import pprint
 
-##############################################
-# -- GLOBAL CONSTANTS
-
-SOCKET_TIMEOUT = 5
-
-N_HOURS_AGO = 12
-
-ENV_FIELDS = {'META_MANAGER': "${META_MANAGER}",
-              'MENDEL_ONE_MANAGER': "${MENDEL_ONE_MANAGER}",
-              'MENDEL_TWO_MANAGER': "${MENDEL_TWO_MANAGER}",
-              'MENDEL_ONE_SUPERVISOR': "${MENDEL_ONE_SUPERVISORS}",
-              'MENDEL_TWO_SUPERVISOR': "${MENDEL_TWO_SUPERVISORS}",
-              'DATASERVER': "${ALL_DATASERVERS}",
-              'MENDEL_ONE_DATASERVER': "${MENDEL_ONE_DATASERVERS}",
-              'MENDEL_TWO_DATASERVER': "${MENDEL_TWO_DATASERVERS}"}
-
-##############################################
-
 # -- Check for a proper Python Version
 if sys.version[0:3] < '3.0':
     print ('Python version 3.0 or greater required (found: {0}).'.format(sys.version[0:5]))
