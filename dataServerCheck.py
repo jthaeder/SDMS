@@ -52,7 +52,6 @@ if sys.version[0:3] < '3.0':
     print ('Python version 3.0 or greater required (found: {0}).'.format(sys.version[0:5]))
     sys.exit(-1)
 
-
 # ----------------------------------------------------------------------------------
 class dataServerCheck:
     """Check all XRD dataServers"""
@@ -326,9 +325,6 @@ def main():
 
     # -- Create report of state changes ofactive and inactive servers
     serverCheck.createChangeReport()
-
-    # -- Create report of active and inactive servers
-    serverCheck.createFullReport()
 
     dbUtil.close()
 
