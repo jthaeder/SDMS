@@ -605,6 +605,7 @@ class stagerSDMS:
 
                 # -- Allow for several trials : 'tryMax'
                 trial = 0
+                print(self._stageXRD['tryMax'])
                 while trial < self._stageXRD['tryMax']:
                     trial += 1
                     try:
@@ -668,7 +669,8 @@ class stagerSDMS:
                         continue
 
                     # -- XRD staging successful
-                    break
+                    if isStagingSucessful:
+                        break
 
             # -- Clean up on disk and update collection
             if isStagingSucessful:
