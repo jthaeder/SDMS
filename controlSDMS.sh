@@ -91,7 +91,7 @@ runCrawlerXRD=on
 runNotOnNodes=""
 
 # ---------------------------------------------------
-# -- EXECUTE MASTER SWITCHES - DO NOT checkForEndOfStagingCycle
+# -- EXECUTE MASTER SWITCHES - DO NOT CHANGE
 # ---------------------------------------------------
 if [[ "${runSDMS}" == "off" || "${runOnMongoDB}" == "off" ]] ; then
   runCronSDMS=off
