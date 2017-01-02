@@ -615,7 +615,7 @@ class stagerSDMS:
                         isStagingSucessful = False
                         xrdCode = 'Unknown'
 
-                        # -- Parse output for differnt XRD error conditions 
+                        # -- Parse output for differnt XRD error conditions
                         for text in err.output.decode("utf-8").rstrip().split('\n'):
                             if "file already exists" in text:
                                 xrdCode = "FileExistsAlready"
@@ -631,9 +631,9 @@ class stagerSDMS:
 
                         print("   Error XRD Staging: ({0}) {1}\n     {2}".format(err.returncode, xrdCode, err.cmd))
                         errorType = 'ErrorCode.{0}'.format(xrdCode)
-                        collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']}, 
+                        collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
                                                     {'$inc': {errorType: 1}, '$set': {'trials': trial}})
-                                                    
+
                         if xrdCode == 'Unknown':
                             note = err.output.decode("utf-8").rstrip()
                             collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']}, {'$set': {'note': note}})
@@ -647,12 +647,12 @@ class stagerSDMS:
                     # -- Except timeout
                     except subprocess.TimeoutExpired as err:
                         isStagingSucessful = False
-                        xrdCode = 'TimeOut'   
+                        xrdCode = 'TimeOut'
 
                         print("   Error XRD Staging: ({0}) {1}\n     {2}".format(err.timeout, xrdCode, err.cmd))
 
                         errorType = 'ErrorCode_{0}'.format(xrdCode)
-                        collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']}, 
+                        collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
                                                     {'$inc': {errorType: 1}, '$set': {'trials': trial}})
                         continue
 
@@ -728,7 +728,7 @@ class stagerSDMS:
     def _rmEmptyFoldersOnScratch(self):
         """Remove empty folders on scratch"""
 
-        cmdLine = 'find ' + self._scratchSpace + '/project -type d -exec rmdir --ignore-fail-on-non-empty "{}" +' 
+        cmdLine = 'find ' + self._scratchSpace + '/project -type d -exec rmdir --ignore-fail-on-non-empty "{}" +'
         cmd = shlex.split(cmdLine)
 
         try:
@@ -776,26 +776,26 @@ class stagerSDMS:
         # -- XRD Crawler hasn't finshed everywhere
         if self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count() > 0:
             return
-                                          
+
         # -- XRD Process hasn't finished
         if self._collsStageTargetNew[target][stageTarget].find().count() > 0 or self._collsStageTargetMiss[target][stageTarget].find().count() > 0:
             return
 
-        # -- HPSS nothing left to stage 
+        # -- HPSS nothing left to stage
         if self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).count() > 0:
             return
 
-        # -- XRD nothing left to stage 
+        # -- XRD nothing left to stage
         if collXRD.find({'stageStatusTarget': 'unstaged'}).count() > 0:
             return
- 
+
         # -- End of cycle
         print("End of cycle")
 
 
         # - rm staged HPSS
         self._collStageFromHPSS.delete_many({'stageStatus': 'staged'})
-   
+
         # - rm staged XRD
         collXRD.delete_many({'stageStatusTarget': 'staged'})
 

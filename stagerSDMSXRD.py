@@ -68,5 +68,4 @@ def main():
     dbUtil.close()
 # ____________________________________________________________________________
 if __name__ == "__main__":
-    print("Start SDMS Stager!")
     sys.exit(main())
