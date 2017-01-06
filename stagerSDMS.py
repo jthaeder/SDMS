@@ -1,4 +1,4 @@
-1;95;0c#!/usr/bin/env python
+#!/usr/bin/env python
 b'This script requires python 3.4'
 
 """
