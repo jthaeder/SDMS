@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+1;95;0c#!/usr/bin/env python
 b'This script requires python 3.4'
 
 """
@@ -773,6 +773,8 @@ class stagerSDMS:
 
         stageTarget = "XRD"
         target = 'picoDst'
+
+        collXRD = self._collsStageToStageTarget[stageTarget]
 
         # -- XRD Crawler hasn't finshed everywhere
         if self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count() > 0:
