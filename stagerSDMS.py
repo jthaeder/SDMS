@@ -37,7 +37,8 @@ from pprint import pprint
 SCRATCH_SPACE = "/global/projecta/projectdirs/starprod/stageArea"
 SCRATCH_LIMIT = 10*1024 # in GB
 
-HPSS_TAPE_ORDER_SCRIPT ="/usr/common/usg/bin/hpss_file_sorter.script"
+HPSS_TAPE_ORDER_SCRIPT = "/usr/common/usg/bin/hpss_file_sorter.script"
+HPSS_SPLIT_MAX = 10
 
 META_MANAGER = "pstarxrdr1"
 
@@ -410,6 +411,29 @@ class stagerSDMS:
         os.remove("{0}/orderMe.txt".format(self._scratchSpace))
 
     #  ____________________________________________________________________________
+    def _splitStageFromHPSS(self):
+        """Split list in n parts"""
+
+        nAll = self._collStageFromHPSS.find({'stageStatus':'unstaged'}).count()
+
+        if nAll <= HPSS_SPLIT_MAX:
+            self._collStageFromHPSS.update_many({'stageStatus':'unstaged'}, {'$set' : {'stageGroup': 1}})
+            return
+
+        self._collStageFromHPSS.update_many({'stageStatus':'unstaged'}, {'$set' : {'stageGroup': -1}})
+
+        split = nAll / HPSS_SPLIT_MAX
+
+        for splitIdx in range(1, HPSS_SPLIT_MAX+2):
+            self._collStageFromHPSS.find({'stageStatus':'unstaged', 'stageGroup': -1}).limit(split).forEach(
+                function (e) {e.stageGroup = splitIdx; self._collStageFromHPSS.save(e);} );
+
+
+
+
+
+
+    #  ____________________________________________________________________________
     def stageHPSSFiles(self):
         """Stage list of files from HPSS on to scratch space
 
@@ -767,7 +791,7 @@ class stagerSDMS:
         print(" Used space in staging area: {} GB".format(self._getUsedSpaceOnStagingArea()))
         print(" ")
         print(" ")
-        
+
     # ____________________________________________________________________________
     def checkForEndOfStagingCycle(self):
         """Check for end of staging cycle."""
