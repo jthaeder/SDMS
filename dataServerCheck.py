@@ -148,7 +148,8 @@ class dataServerCheck:
                'lastCrawlerRun': '2000-01-01-01-01',
                'totalSpace': -1,
                'usedSpace': -1,
-               'freeSpace': -1
+               'freeSpace': -1,
+               'fillLevel': -1.
                }
 
         now = datetime.datetime.now().strftime('%Y-%m-%d-%H')
@@ -291,6 +292,13 @@ class dataServerCheck:
         inactiveAndData = self._getListOfNodesWithDataOnThem(listOfNowInactiveServers)
         if (len(inactiveAndData)):
             print("Inactive server but data on them: ", inactiveAndData)
+
+        # ----------------------------------------------------------
+
+        # -- Which are more than 90% filled
+        fullServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'fillLevel': {'$gt': '90.'}}))
+        if (len(fullServerXRD)):
+            print("Data Server more than 90\% filled: ", fullServerXRD)
 
     # _________________________________________________________
     def _getListOfNodesWithDataOnThem(self, nodeList):

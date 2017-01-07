@@ -219,6 +219,8 @@ class crawlerXRD:
                 total += usage.total
                 free += usage.free
 
+        fillLevel = total/float(used)*100
+
         # -- update DB
         doc = {'nodeName': self._nodeName,
                'stateActive': False,
@@ -228,6 +230,7 @@ class crawlerXRD:
                                                  {'$set': {'freeSpace': free,
                                                            'usedSpace': used,
                                                            'totalSpace': total,
+                                                           'fillLevel': fillLevel,
                                                            'newFilesStaged': False,
                                                            'lastCrawlerRun': self._now},
                                                   '$setOnInsert' : doc}, upsert = True)
