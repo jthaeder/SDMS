@@ -489,7 +489,7 @@ class stagerSDMS:
     def _getUsedSpaceOnStagingArea(self):
         """Get used space on stageing area in GB."""
 
-        pipe = [{'$match': {'stageStatusHPSS': 'staged'}},
+        pipe = [{'$match': {'stageStatusHPSS': 'staged', 'stageStatusTarget': { '$ne': "staged" } }},
 	        {'$group': {'_id': None, 'total': {'$sum': '$fileSize'}}}]
 
         usedSpace = 0
@@ -748,6 +748,7 @@ class stagerSDMS:
 
         print(" All Docs in {}: {}".format(collXRD.name, collXRD.find().count()))
         print("   Unstaged: {}".format(collXRD.find({'stageStatusTarget': 'unstaged'}).count()))
+        print("   Unstaged: {} but staged already from HPSS".format(collXRD.find({'stageStatusTarget': 'unstaged', 'stageStatus': 'staged'}).count()))
         print("   Staged  : {}".format(collXRD.find({'stageStatusTarget': 'staged'}).count()))
         print("   Dummy   : {}".format(collXRD.find({'stageStatusHPSS': 'staged', 'stageDummy': True}).count()))
         print("   Failed  : {}".format(collXRD.find({'stageStatusTarget': 'failed'}).count()))
@@ -758,9 +759,9 @@ class stagerSDMS:
         print("   Staged  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'staged'}).count()))
         print("   Failed  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'failed'}).count()))
         print(" ")
-        print(" Number of dataserver with new files staged (no new XRD Crawler Run: {}".format(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()))
-        print(" Unprocessed new files on data server: {}".format(self._collsStageTargetNew[target][stageTarget].find().count()))
-        print(" Unprocessed missing files on data server: {}".format(self._collsStageTargetMiss[target][stageTarget].find().count()))
+        print(" Number of dataserver with new files staged: {} (no new XRD Crawler Run)".format(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()))
+        print(" Unprocessed new files on data server:       {}".format(self._collsStageTargetNew[target][stageTarget].find().count()))
+        print(" Unprocessed missing files on data server:   {}".format(self._collsStageTargetMiss[target][stageTarget].find().count()))
         print(" ")
         print(" Free space on scratch disk: {} GB".format(self._getFreeSpaceOnScratchDisk()))
         print(" Used space in staging area: {} GB".format(self._getUsedSpaceOnStagingArea()))
