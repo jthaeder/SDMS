@@ -410,6 +410,9 @@ class stagerSDMS:
         # -- Clean up order file
         os.remove("{0}/orderMe.txt".format(self._scratchSpace))
 
+        # -- Split stage set
+        self._splitStageFromHPSS()
+
     #  ____________________________________________________________________________
     def _splitStageFromHPSS(self):
         """Split list in n parts"""
@@ -425,13 +428,9 @@ class stagerSDMS:
         split = nAll / HPSS_SPLIT_MAX
 
         for splitIdx in range(1, HPSS_SPLIT_MAX+2):
-            self._collStageFromHPSS.find({'stageStatus':'unstaged', 'stageGroup': -1}).limit(split).forEach(
+            self._collStageFromHPSS.find({'stageStatus':'unstaged',
+                                          'stageGroup': -1}).sort('orderIdx', pymongo.ASCENDING).limit(split).forEach(
                 function (e) {e.stageGroup = splitIdx; self._collStageFromHPSS.save(e);} );
-
-
-
-
-
 
     #  ____________________________________________________________________________
     def stageHPSSFiles(self):
@@ -440,13 +439,20 @@ class stagerSDMS:
            Implemented as single squential process to keep file ordering.
         """
 
-        if self._dbUtil.checkSetProcessLock("stagingHPSS"):
+        lock = True
+        for stageGroup in self._collStageFromHPSS.distinct('stageGroup'):
+            if not self._dbUtil.checkSetProcessLock("stagingHPSS_{}".format(stageGroup)):
+                lock = False
+                break
+
+        if lock:
             return
 
         listOfFilesToStage = []
 
         ## -- Decide on to stage file or subFile
-        for hpssDocFile in self._collStageFromHPSS.find({'stageStatus':'unstaged'}).sort('orderIdx', pymongo.ASCENDING):
+        for hpssDocFile in self._collStageFromHPSS.find({'stageStatus': 'unstaged',
+                                                         'stageGroup': stageGroup}).sort('orderIdx', pymongo.ASCENDING):
 
             # -- Check if there is enough space on disk
             if not self._checkScratchSpaceStatus():
@@ -467,7 +473,7 @@ class stagerSDMS:
                 self._extractHPSSTarFile(hpssDocFile['fileFullPath'], hpssDocFile['stageTarget'],
                                          hpssDocFile['listOfFiles'], hpssDocFile['target'], extractFileWise)
 
-        self._dbUtil.unsetProcessLock("stagingHPSS")
+        self._dbUtil.unsetProcessLock("stagingHPSS_{}".format(stageGroup))
 
     #  ____________________________________________________________________________
     def _checkScratchSpaceStatus(self):
