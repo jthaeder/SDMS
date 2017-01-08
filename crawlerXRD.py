@@ -219,7 +219,7 @@ class crawlerXRD:
                 total += usage.total
                 free += usage.free
 
-        fillLevel = total/float(used)*100
+        fillLevel = used/float(total)*100
 
         # -- update DB
         doc = {'nodeName': self._nodeName,
