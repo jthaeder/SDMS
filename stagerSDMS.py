@@ -110,6 +110,9 @@ class stagerSDMS:
         # -- Data server collection
         self._collServerXRD = self._dbUtil.getCollection('XRD_DataServers')
 
+        # -- Process Locks
+        self._collProcessLocks = self._dbUtil.getCollection('Process_Locks')
+
         # -- HPPS files collection
         self._collsHPSSFiles = self._dbUtil.getCollection('HPSS_Files')
 
@@ -436,16 +439,24 @@ class stagerSDMS:
            Implemented as single squential process to keep file ordering.
         """
 
+        print("stage")
+
         lock = True
-        for stageGroup in self._collStageFromHPSS.distinct('stageGroup'):
+        for stageGroup in sorted(self._collStageFromHPSS.distinct('stageGroup')):
+            print(stageGroup, lock)
+
             if not self._dbUtil.checkSetProcessLock("stagingHPSS_{}".format(stageGroup)):
                 lock = False
                 break
+            print(stageGroup, lock)
 
+        return(lock, stageGroup)
         if lock:
             return
 
         listOfFilesToStage = []
+
+        return
 
         ## -- Decide on to stage file or subFile
         for hpssDocFile in self._collStageFromHPSS.find({'stageStatus': 'unstaged',
@@ -804,6 +815,12 @@ class stagerSDMS:
 
         collXRD = self._collsStageToStageTarget[stageTarget]
 
+        # - rm staged HPSS
+        self._collStageFromHPSS.delete_many({'stageStatus': 'staged'})
+
+        # - rm staged XRD
+        collXRD.delete_many({'stageStatusTarget': 'staged'})
+
         # -- XRD Crawler hasn't finshed everywhere
         if self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count() > 0:
             return
@@ -822,14 +839,13 @@ class stagerSDMS:
 
         # -- End of cycle
 
-        # - rm staged HPSS
-        self._collStageFromHPSS.delete_many({'stageStatus': 'staged'})
-
-        # - rm staged XRD
-        collXRD.delete_many({'stageStatusTarget': 'staged'})
-
         # - end of staging cycle
         self._dbUtil.unsetProcessLock("staging_cycle_active")
+
+        # -- remove stageing locks
+        for key in self._collProcessLocks.find_one({'unique':'unique'}).keys():
+            if 'stagingHPSS' in key:
+                self._collProcessLocks.find_one_and_update({'unique':'unique'}, {'$unset': {key: 1}})
 
         # -- Print staging stats
         self.printStagingStats()
