@@ -2,10 +2,7 @@
 b'This script requires python 3.4'
 
 """
-Script to prepare staging of files according to stageing file.
-
-Stager which reads staging file, sets stageMarker in `HPSS_<Target>` collection
-and prepares staging to target.
+Script to stage from staging area to XRD.
 
 For detailed documentation, see: README_StageXRD.md
 """
@@ -32,16 +29,6 @@ from pymongo import bulk
 from pprint import pprint
 
 from stagerSDMS import stagerSDMS
-
-##############################################
-# -- GLOBAL CONSTANTS
-
-SCRATCH_SPACE = "/global/projecta/projectdirs/starprod/stageArea"
-SCRATCH_LIMIT = 10*1024 # in GB
-
-HPSS_TAPE_ORDER_SCRIPT ="/usr/common/usg/bin/hpss_file_sorter.script"
-
-META_MANAGER = "pstarxrdr1"
 
 ##############################################
 

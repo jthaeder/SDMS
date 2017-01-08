@@ -86,6 +86,9 @@ class stagerSDMS:
         # -- Get XRD staging parameters
         self._getXRDStagingParameters()
 
+        # -- Get HPSS staging parameters
+        self._getHPSSStagingParameters()
+
     # _________________________________________________________
     def _readStagingFile(self):
         """Read in staging file."""
@@ -170,6 +173,17 @@ class stagerSDMS:
             self._stageXRD['server']['MENDEL_ALL'] = doc['nodeName'] + '.nersc.gov'
         else:
             self._stageXRD['server']['MENDEL_ALL'] = META_MANAGER + '.nersc.gov'
+
+
+    # _________________________________________________________
+    def _getHPSSStagingParameters(self):
+        """Get staging parameters for HPSS"""
+
+        self._stageHPSS = dict()
+
+        self._stageHPSS['tapeOrderScript'] = HPSS_TAPE_ORDER_SCRIPT
+
+        self._stageHPSS['splitMax'] = HPSS_SPLIT_MAX
 
     # _________________________________________________________
     def prepareStaging(self):
@@ -306,10 +320,6 @@ class stagerSDMS:
                 # -- Documents to be removed from stageTarget
                 docsToRemove = docsSetStaged - docsSetHPSS
 
-#                print("xrd    ", len(docsSetStaged))
-#                print("xrdnew ", len(docsToStage))
-#                print("xrdrm  ", len(docsToRemove))
-
                 # -- Get collection to stage from HPSS and to stageTarget
                 self._prepareStageColls(docsToStage, target, stageTarget)
 
@@ -395,7 +405,7 @@ class stagerSDMS:
                 print(hpssDocFile['fileFullPath'], file=orderMe)
 
         # -- Call tape ordering script
-        cmdLine = '{0} {1}/orderMe.txt'.format(HPSS_TAPE_ORDER_SCRIPT, self._scratchSpace)
+        cmdLine = '{0} {1}/orderMe.txt'.format(self._stageHPSS['tapeOrderScript'], self._scratchSpace)
         cmd = shlex.split(cmdLine)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
@@ -418,23 +428,22 @@ class stagerSDMS:
 
         nAll = self._collStageFromHPSS.find({'stageStatus':'unstaged'}).count()
 
-        if nAll <= HPSS_SPLIT_MAX:
+        if nAll <= self._stageHPSS['splitMax']:
             self._collStageFromHPSS.update_many({'stageStatus':'unstaged'}, {'$set' : {'stageGroup': 1}})
             return
 
         self._collStageFromHPSS.update_many({'stageStatus':'unstaged'}, {'$set' : {'stageGroup': -1}})
 
-        split = int(nAll / HPSS_SPLIT_MAX)
+        split = int(nAll / self._stageHPSS['splitMax'])
 
-        for splitIdx in range(1, HPSS_SPLIT_MAX+2):
+        for splitIdx in range(1, self._stageHPSS['splitMax']+2):
             for doc in self._collStageFromHPSS.find({'stageStatus':'unstaged',
                                                      'stageGroup': -1}, {'_id':True}).sort('orderIdx', pymongo.ASCENDING).limit(split):
-            
+
                 self._collStageFromHPSS.update_one({'_id': doc['_id']}, {'$set': {'stageGroup': splitIdx}})
 
-
     #  ____________________________________________________________________________
-    def stageHPSSFiles(self):
+    def stageFromHPSS(self):
         """Stage list of files from HPSS on to scratch space
 
            Implemented as single squential process to keep file ordering.
@@ -859,7 +868,7 @@ def main():
     stager.cleanDummyStagedFiles()
 
     # -- Stage files from HPSS
-    stager.stageHPSSFiles()
+    stager.stageFromHPSS()
 
     stager.cleanDummyStagedFiles()
 

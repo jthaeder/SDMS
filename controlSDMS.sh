@@ -7,6 +7,8 @@
 #  - cronSDMSHourly.sh
 #  - cronXRDSDMS.sh
 #  - crawlerXRD.sh
+#  - stagerSDMSXRD.sh
+#  - stagerSDMSHPSS.sh
 #####################################################
 
 # ---------------------------------------------------
@@ -41,7 +43,7 @@ runOnHPSS=on
 runCronSDMS=on
 
 # ---------------------------------------------------
-# -- Runs Daily CRON : cronSDMSHourly.sh
+# -- Runs Hourly CRON : cronSDMSHourly.sh
 # ---------------------------------------------------
 #    Runs XRD:
 #     - processXRD.py
@@ -57,7 +59,23 @@ runCronSDMS=on
 runCronSDMSHourly=on
 
 # ---------------------------------------------------
-# -- Runs Daily CRON : runCronXRDSDMS.sh
+# -- Runs Hourly CRON : stagerSDMSXRD.sh
+#                       stagerSDMSHPSS.sh
+# ---------------------------------------------------
+#    Runs Stager (HPSS and XRD)
+#     - stagerSDMSXRD.sh
+#     - stagerSDMSHPSS.sh
+# ---------------------------------------------------
+#    Current CRON options:
+#      node: pdsf8
+#      user: starofl
+#      schedule: 17 * * * *
+# ---------------------------------------------------
+#   Use "on" or "off"
+runCronStaging=on
+
+# ---------------------------------------------------
+# -- Runs Hourly CRON : runCronXRDSDMS.sh
 # ---------------------------------------------------
 #    Runs XRD:
 #     - cleanXRD.py
@@ -98,14 +116,17 @@ if [[ "${runSDMS}" == "off" || "${runOnMongoDB}" == "off" ]] ; then
   runCronSDMSHourly=off
   runCronXRDSDMS=off
   runCrawlerXRD=off
+  runCronStaging=off
 fi
 
 if [ "${runOnXRD}" == "off" ] ; then
   runCronXRDSDMS=off
   runCronSDMSHourly=off
+  runCronStaging=off
 fi
 
 if [ "${runOnHPSS}" == "off" ] ; then
   runCronSDMS=off
   runCronSDMSHourly=off
+  runCronStaging=off
 fi

@@ -2,10 +2,7 @@
 b'This script requires python 3.4'
 
 """
-Script to prepare staging of files according to stageing file.
-
-Stager which reads staging file, sets stageMarker in `HPSS_<Target>` collection
-and prepares staging to target.
+Script to stage from HPSS to staging area.
 
 For detailed documentation, see: README_StageXRD.md
 """
@@ -52,9 +49,8 @@ def main():
     # -- Clean dummy staged files
     stager.cleanDummyStagedFiles()
 
-    print(stager._scratchSpace, META_MANAGER)
     # -- Stage from HPSS to staging area
-#    stager.stageFromHPSS()
+    stager.stageFromHPSS()
 
     dbUtil.close()
 # ____________________________________________________________________________

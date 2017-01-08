@@ -2,31 +2,34 @@
 #
 # run cron scripts
 #####################################################
-# Script to be called by daily cron.
-# Runs different suites for SDMS
+# Script to be called by hourly cron.
 # ---------------------------------------------------
-# HPSS:
-#  - crawlerHPSS.py
-#  - inspectHPSS.py
+# Stager
+#  - stagerSDMSHPSS.py
 #
 #####################################################
 
-
 #####################################################
 # -- Source Environemnt
-source /global/homes/j/jthaeder/bin/setbash.sh
-#source /global/homes/s/starxrd/bin/.setXRDMongoEnv.sh
+source ~starxrd/bin/.setXRDMongoEnv.sh
+source ~starxrd/SDMS/controlSDMS.sh
 
 #####################################################
-
+# -- Load Modules
 module load python/3.4.3
 
 module use -a /common/star/pkg/Modules
-module load xrootd 
+module load xrootd
+
+#####################################################
+# -- Check if script should be run
+if [ "${runCronStaging}" == "off" ] ; then
+  exit 0
+fi
 
 #####################################################
 
-pushd /global/homes/j/jthaeder/SDMS > /dev/null
+pushd ~/SDMS > /dev/null
 
 python stagerSDMSHPSS.py
 
