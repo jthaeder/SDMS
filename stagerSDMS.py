@@ -429,8 +429,11 @@ class stagerSDMS:
 
         for splitIdx in range(1, HPSS_SPLIT_MAX+2):
             self._collStageFromHPSS.find({'stageStatus':'unstaged',
-                                          'stageGroup': -1}).sort('orderIdx', pymongo.ASCENDING).limit(split).forEach(
-                function (e) {e.stageGroup = splitIdx; self._collStageFromHPSS.save(e);} );
+                                          'stageGroup': -1}).sort('orderIdx', pymongo.ASCENDING).limit(split).forEach(bson.Code('''
+                function (e) {
+                   e.stageGroup = splitIdx
+                   self._collStageFromHPSS.save(e);
+                }''') )
 
     #  ____________________________________________________________________________
     def stageHPSSFiles(self):
