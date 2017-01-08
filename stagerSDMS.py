@@ -296,18 +296,15 @@ class stagerSDMS:
                                                                                 'target': target}))
                 docsSetStaged = set([item['filePath'] for item in stagedDocs])
 
-                print("hpss   ", len(docsSetHPSS))
-                print("xrd    ", len(docsSetStaged))
-
                 # -- Document to be staged
                 docsToStage = docsSetHPSS - docsSetStaged
 
                 # -- Documents to be removed from stageTarget
                 docsToRemove = docsSetStaged - docsSetHPSS
 
-                print("xrd    ", len(docsSetStaged))
-                print("xrdnew ", len(docsToStage))
-                print("xrdrm  ", len(docsToRemove))
+#                print("xrd    ", len(docsSetStaged))
+#                print("xrdnew ", len(docsToStage))
+#                print("xrdrm  ", len(docsToRemove))
 
                 # -- Get collection to stage from HPSS and to stageTarget
                 self._prepareStageColls(docsToStage, target, stageTarget)
@@ -319,8 +316,6 @@ class stagerSDMS:
            - Fill collection to stage from HPSS to Disk
            - Fill collection to stage from Disk to Target
            """
-
-        print("PREPARE : ", target, stageTarget)
 
         # -- Loop over all paths and gather information
         for currentPath in docsToStage:
@@ -425,15 +420,14 @@ class stagerSDMS:
 
         self._collStageFromHPSS.update_many({'stageStatus':'unstaged'}, {'$set' : {'stageGroup': -1}})
 
-        split = nAll / HPSS_SPLIT_MAX
+        split = int(nAll / HPSS_SPLIT_MAX)
 
         for splitIdx in range(1, HPSS_SPLIT_MAX+2):
-            self._collStageFromHPSS.find({'stageStatus':'unstaged',
-                                          'stageGroup': -1}).sort('orderIdx', pymongo.ASCENDING).limit(split).forEach(bson.Code('''
-                function (e) {
-                   e.stageGroup = splitIdx
-                   self._collStageFromHPSS.save(e);
-                }''') )
+            for doc in self._collStageFromHPSS.find({'stageStatus':'unstaged',
+                                                     'stageGroup': -1}, {'_id':True}).sort('orderIdx', pymongo.ASCENDING).limit(split):
+            
+                self._collStageFromHPSS.update_one({'_id': doc['_id']}, {'$set': {'stageGroup': splitIdx}})
+
 
     #  ____________________________________________________________________________
     def stageHPSSFiles(self):
