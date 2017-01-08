@@ -775,7 +775,7 @@ class stagerSDMS:
 
         print(" All Docs in {}: {}".format(collXRD.name, collXRD.find().count()))
         print("   Unstaged: {}".format(collXRD.find({'stageStatusTarget': 'unstaged'}).count()))
-        print("   Unstaged: {} but staged already from HPSS".format(collXRD.find({'stageStatusTarget': 'unstaged', 'stageStatus': 'staged'}).count()))
+        print("   Unstaged: {} but staged already from HPSS".format(collXRD.find({'stageStatusTarget': 'unstaged', 'stageStatusHPSS': 'staged'}).count()))
         print("   Staged  : {}".format(collXRD.find({'stageStatusTarget': 'staged'}).count()))
         print("   Dummy   : {}".format(collXRD.find({'stageStatusHPSS': 'staged', 'stageDummy': True}).count()))
         print("   Failed  : {}".format(collXRD.find({'stageStatusTarget': 'failed'}).count()))
