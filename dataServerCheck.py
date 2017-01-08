@@ -296,9 +296,11 @@ class dataServerCheck:
         # ----------------------------------------------------------
 
         # -- Which are more than 90% filled
-        fullServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'fillLevel': {'$gt': '90.'}}))
+        fullServerXRD = set(d['nodeName'] for d in self._collServerXRD.find({'fillLevel': {'$gt': 90.}}))
         if (len(fullServerXRD)):
             print("Data Server more than 90\% filled: ", fullServerXRD)
+            
+        print("")
 
     # _________________________________________________________
     def _getListOfNodesWithDataOnThem(self, nodeList):
