@@ -439,24 +439,16 @@ class stagerSDMS:
            Implemented as single squential process to keep file ordering.
         """
 
-        print("stage")
-
         lock = True
         for stageGroup in sorted(self._collStageFromHPSS.distinct('stageGroup')):
-            print(stageGroup, lock)
-
             if not self._dbUtil.checkSetProcessLock("stagingHPSS_{}".format(stageGroup)):
-                lock = False
-                break
-            print(stageGroup, lock)
+                 lock = False
+                 break
 
-        return(lock, stageGroup)
         if lock:
             return
 
         listOfFilesToStage = []
-
-        return
 
         ## -- Decide on to stage file or subFile
         for hpssDocFile in self._collStageFromHPSS.find({'stageStatus': 'unstaged',
