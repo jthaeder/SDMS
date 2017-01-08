@@ -56,6 +56,7 @@ class stagerSDMS:
     # _________________________________________________________
     def __init__(self, dbUtil, stageingFile):
         self._stageingFile = stageingFile
+
         self._scratchSpace = SCRATCH_SPACE
         self._scratchLimit = SCRATCH_LIMIT
 
