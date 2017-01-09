@@ -461,27 +461,32 @@ class stagerSDMS:
         listOfFilesToStage = []
 
         ## -- Decide on to stage file or subFile
-        for hpssDocFile in self._collStageFromHPSS.find({'stageStatus': 'unstaged',
-                                                         'stageGroup': stageGroup}).sort('orderIdx', pymongo.ASCENDING):
+        while True:
+
+            # - Get next unstaged document and set status to staging
+            stageDoc = self._collStageFromHPSS.find_one_and_update({'stageStatus': 'unstaged', 'stageGroup': stageGroup},
+                                                        '$set':{'stageStatus': 'staging'}}).sort('orderIdx', pymongo.ASCENDING)
+            if not stageDoc:
+                break
 
             # -- Check if there is enough space on disk
             if not self._checkScratchSpaceStatus():
                 break
 
             # -- Use hsi to extract one file only
-            if not hpssDocFile['isInTarFile']:
-                self._extractHPSSFile(hpssDocFile['fileFullPath'], hpssDocFile['stageTarget'])
+            if not stageDoc['isInTarFile']:
+                self._extractHPSSFile(stageDoc['fileFullPath'], stageDoc['stageTarget'])
 
             # -- Use htar to extract from a htar file
             else:
                 extractFileWise = False
 
                 # -- more the 25% percent of all file need to be extracted -> Get the whole file
-                if hpssDocFile['filesInTar']*0.25 > len(hpssDocFile['listOfFiles']):
+                if stageDoc['filesInTar']*0.25 > len(stageDoc['listOfFiles']):
                     extractFileWise = True
 
-                self._extractHPSSTarFile(hpssDocFile['fileFullPath'], hpssDocFile['stageTarget'],
-                                         hpssDocFile['listOfFiles'], hpssDocFile['target'], extractFileWise)
+                self._extractHPSSTarFile(stageDoc['fileFullPath'], stageDoc['stageTarget'],
+                                         stageDoc['listOfFiles'], stageDoc['target'], extractFileWise)
 
         self._dbUtil.unsetProcessLock("stagingHPSS_{}".format(stageGroup))
 
