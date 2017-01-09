@@ -462,10 +462,12 @@ class stagerSDMS:
 
         ## -- Decide on to stage file or subFile
         while True:
+            now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')
 
             # - Get next unstaged document and set status to staging
             stageDoc = self._collStageFromHPSS.find_one_and_update({'stageStatus': 'unstaged', 'stageGroup': stageGroup},
-                                                        '$set':{'stageStatus': 'staging'}}).sort('orderIdx', pymongo.ASCENDING)
+                                                        '$set':{'stageStatus': 'staging',
+                                                            'timeStamp': now}}).sort('orderIdx', pymongo.ASCENDING)
             if not stageDoc:
                 break
 
@@ -630,10 +632,11 @@ class stagerSDMS:
         # -- Loop over all documents in target collection
         while True:
             isStagingSucessful = True
+            now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')
 
             # - Get next unstaged document and set status to staging
             stageDoc = collXRD.find_one_and_update({'stageStatusHPSS': 'staged', 'stageStatusTarget': 'unstaged'},
-                                                   {'$set':{'stageStatusTarget': 'staging'}})
+                                                   {'$set':{'stageStatusTarget': 'staging', 'timeStamp':now}})
             if not stageDoc:
                 break
 
