@@ -159,7 +159,7 @@ class stagerSDMS:
         self._stageXRD['xrdcpOptions'] = "-v --nopbar -S 4"
 
         nEntries = self._collServerXRD.find().count()
-        self._stageXRD['tryMax'] = 2 * nEntries
+        self._stageXRD['tryMax'] = 10 * nEntries
 
         self._stageXRD['server'] = dict()
         doc = self._collServerXRD.find_one({'roles':'MENDEL_ONE_MANAGER'})
@@ -466,7 +466,7 @@ class stagerSDMS:
 
             # - Get next unstaged document and set status to staging
             stageDoc = self._collStageFromHPSS.find_one_and_update({'stageStatus': 'unstaged', 'stageGroup': stageGroup},
-                                                        '$set':{'stageStatus': 'staging',
+                                                        {'$set':{'stageStatus': 'staging',
                                                             'timeStamp': now}}).sort('orderIdx', pymongo.ASCENDING)
             if not stageDoc:
                 break
