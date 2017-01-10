@@ -467,7 +467,7 @@ class stagerSDMS:
             # - Get next unstaged document and set status to staging
             stageDoc = self._collStageFromHPSS.find_one_and_update({'stageStatus': 'unstaged', 'stageGroup': stageGroup},
                                                         {'$set':{'stageStatus': 'staging',
-                                                            'timeStamp': now}}).sort('orderIdx', pymongo.ASCENDING)
+                                                            'timeStamp': now}}, sort=[('orderIdx', pymongo.ASCENDING)])
             if not stageDoc:
                 break
 
@@ -678,7 +678,7 @@ class stagerSDMS:
                             break
 
                         print("   Error XRD Staging: ({0}) {1}\n     {2}".format(err.returncode, xrdCode, err.cmd))
-                        errorType = 'ErrorCode.{0}'.format(xrdCode)
+                        errorType = 'ErrorCode_{0}'.format(xrdCode)
                         collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
                                                     {'$inc': {errorType: 1}, '$set': {'trials': trial}})
 
@@ -798,13 +798,14 @@ class stagerSDMS:
         print("   Unstaged: {}".format(collXRD.find({'stageStatusTarget': 'unstaged'}).count()))
         print("   Unstaged: {} but staged already from HPSS".format(collXRD.find({'stageStatusTarget': 'unstaged', 'stageStatusHPSS': 'staged'}).count()))
         print("   Staged  : {}".format(collXRD.find({'stageStatusTarget': 'staged'}).count()))
-        print("   Dummy   : {}".format(collXRD.find({'stageStatusHPSS': 'staged', 'stageDummy': True}).count()))
-        print("   Failed  : {}".format(collXRD.find({'stageStatusTarget': 'failed'}).count()))
         print("   Staging : {}".format(collXRD.find({'stageStatusTarget': 'staging'}).count()))
+        print("   Failed  : {}".format(collXRD.find({'stageStatusTarget': 'failed'}).count()))
+        print("   Dummy   : {}".format(collXRD.find({'stageStatusHPSS': 'staged', 'stageDummy': True}).count()))
         print(" ")
         print(" All Docs in {}: {}".format(self._collStageFromHPSS.name, self._collStageFromHPSS.find().count()))
         print("   Unstaged: {}".format(self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).count()))
         print("   Staged  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'staged'}).count()))
+        print("   Staging : {}".format(self._collStageFromHPSS.find({'stageStatus': 'staging'}).count()))
         print("   Failed  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'failed'}).count()))
         print(" ")
         print(" Number of dataserver with new files staged: {} (no new XRD Crawler Run)".format(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()))
