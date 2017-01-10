@@ -777,13 +777,10 @@ class stagerSDMS:
     def _rmEmptyFoldersOnScratch(self):
         """Remove empty folders on scratch"""
 
-        cmdLine = 'find ' + self._scratchSpace + '/project -type d -exec rmdir --ignore-fail-on-non-empty "{}" +'
-        cmd = shlex.split(cmdLine)
-
-        try:
-            output = check_output(cmd, stderr=STDOUT)
-        except:
-            pass
+        open('{}/.hiddenMarker'.format(self._scratchSpace),'a').close()
+        for root, dirs, files in os.walk(self._scratchSpace, topdown=False):
+            if len(files) == 0 and len(dirs) == 0:
+                os.removedirs(root)
 
     # ____________________________________________________________________________
     def printStagingStats(self):
