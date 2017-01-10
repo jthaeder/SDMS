@@ -174,7 +174,6 @@ class stagerSDMS:
         else:
             self._stageXRD['server']['MENDEL_ALL'] = META_MANAGER + '.nersc.gov'
 
-
     # _________________________________________________________
     def _getHPSSStagingParameters(self):
         """Get staging parameters for HPSS"""
@@ -466,8 +465,8 @@ class stagerSDMS:
 
             # - Get next unstaged document and set status to staging
             stageDoc = self._collStageFromHPSS.find_one_and_update({'stageStatus': 'unstaged', 'stageGroup': stageGroup},
-                                                        {'$set':{'stageStatus': 'staging',
-                                                            'timeStamp': now}}, sort=[('orderIdx', pymongo.ASCENDING)])
+                                                                   {'$set':{'stageStatus': 'staging',
+                                                                    'timeStamp': now}}, sort=[('orderIdx', pymongo.ASCENDING)])
             if not stageDoc:
                 break
 
@@ -741,7 +740,6 @@ class stagerSDMS:
                 collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
                                             {'$set': {'stageStatusTarget': 'failed'}})
 
-
     # ____________________________________________________________________________
     def _setFileHasBeenStagedToXRD(self):
         """Add that file as been added to XRD."""
@@ -769,10 +767,6 @@ class stagerSDMS:
                 except:
                     pass
 
-        # -- Remove empty folders on scratch
-        self._rmEmptyFoldersOnScratch()
-
-
     # ____________________________________________________________________________
     def _rmEmptyFoldersOnScratch(self):
         """Remove empty folders on scratch"""
@@ -792,12 +786,13 @@ class stagerSDMS:
         collXRD = self._collsStageToStageTarget[stageTarget]
 
         print(" All Docs in {}: {}".format(collXRD.name, collXRD.find().count()))
-        print("   Unstaged: {}".format(collXRD.find({'stageStatusTarget': 'unstaged'}).count()))
-        print("   Unstaged: {} but staged already from HPSS".format(collXRD.find({'stageStatusTarget': 'unstaged', 'stageStatusHPSS': 'staged'}).count()))
-        print("   Staged  : {}".format(collXRD.find({'stageStatusTarget': 'staged'}).count()))
-        print("   Staging : {}".format(collXRD.find({'stageStatusTarget': 'staging'}).count()))
-        print("   Failed  : {}".format(collXRD.find({'stageStatusTarget': 'failed'}).count()))
-        print("   Dummy   : {}".format(collXRD.find({'stageStatusHPSS': 'staged', 'stageDummy': True}).count()))
+        print("   Unstaged   : {}".format(collXRD.find({'stageStatusTarget': 'unstaged'}).count()))
+        print("   Unstaged   : {} but staged already from HPSS".format(collXRD.find({'stageStatusTarget': 'unstaged', 'stageStatusHPSS': 'staged'}).count()))
+        print("   Staged     : {}".format(collXRD.find({'stageStatusTarget': 'staged'}).count()))
+        print("   Dummy      : {}".format(collXRD.find({'stageStatusHPSS': 'staged', 'stageDummy': True}).count()))
+        print("   Failed     : {}".format(collXRD.find({'stageStatusTarget': 'failed'}).count()))
+        print("   Investigate: {}".format(collXRD.find({'stageStatusTarget': 'investigate'}).count()))
+        print("   Staging    : {}".format(collXRD.find({'stageStatusTarget': 'staging'}).count()))
         print(" ")
         print(" All Docs in {}: {}".format(self._collStageFromHPSS.name, self._collStageFromHPSS.find().count()))
         print("   Unstaged: {}".format(self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).count()))
@@ -815,19 +810,112 @@ class stagerSDMS:
         print(" ")
 
     # ____________________________________________________________________________
+    def _checkUnstaged(self):
+        """Check if no unstaged are left - return False if none left"""
+
+        # -- HPSS nothing left to stage
+        if self._collHPSS.find({'stageStatus': 'unstaged'}).count() > 0:
+            return True
+
+        # -- XRD nothing left to stage
+        if self._collXRD.find({'stageStatusTarget': 'unstaged'}).count() > 0:
+            return True
+
+        return False
+
+    # ____________________________________________________________________________
+    def _checkFailed(self):
+        """Check if some failed files are left"""
+
+        # -- Loop over all failed Target files
+        for doc in self._collXRD.find({'stageStatusTarget': 'failed'}):
+
+            # -- If files have been rested more the 10 times, set them to investigate
+            resetFailed = doc['resetFailed']
+            if resetFailed > 10:
+                self._collXRD.update_one({'_id': doc['_id']},
+                                         {'$set': {'stageStatusTarget': 'investigate'}})
+
+            # -- Get other errors than no space left on device
+            otherError = []
+            for key, value in doc:
+                if "ErrorCode" in key and key != "ErrorCode_NoSpaceLeftOnDevice":
+                    otherError.append(key)
+
+            # -- If all errors are no space left on device, reset to unstaged and increase resetFailed count
+            if (len(otherError) == 0):
+                self._collXRD.update_one({'_id': doc['_id']},
+                                         {'$set': {'stageStatusTarget': 'unstaged'},
+                                          '$inc': {'resetFailed': 1}})
+
+            # -- Else , set to investigate
+            self._collXRD.update_one({'_id': doc['_id']}, {'$set': {'stageStatusTarget': 'investigate'}})
+
+    # ____________________________________________________________________________
+    def _checkStaging(self):
+        """Check if files are still staging
+
+           set them back to unstaged in case of too long in staging
+        """
+
+        # -- Set all files from HPSS - still in staging state after 8 hours back to unstaged
+        nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=8)).strftime('%Y-%m-%d-%H-%M')
+        self._collHPSS.update_many({'stageStatusTarget': 'staging', 'timeStamp': {"$lt": nHoursAgo}},
+                                   {'$set': {'stageStatus': 'unstaged'}):
+
+        # -- Set all files to XRD - still in staging state after 4 hours back to unstaged
+        nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=4)).strftime('%Y-%m-%d-%H-%M')
+        self._collXRD.update_many({'stageStatusTarget': 'staging', 'timeStamp': {"$lt": nHoursAgo}},
+                                  {'$set': {'stageStatusTarget': 'xxx'}):
+
+    # ____________________________________________________________________________
+    def killZombieXRDCP(self):
+        """Kill zombie xrdcp processes if not in staging cycle."""
+
+        if not self._dbUtil.checkProcessLock("staging_cycle_active"):
+            xrdcpCmd = "xrdcp"
+
+            for proc in psutil.process_iter():
+                if proc.name() == xrdcpCmd:
+                    print("Kill ", proc.name())
+                    #proc.kill()
+
+    # ____________________________________________________________________________
     def checkForEndOfStagingCycle(self):
         """Check for end of staging cycle."""
 
         stageTarget = "XRD"
         target = 'picoDst'
 
-        collXRD = self._collsStageToStageTarget[stageTarget]
+        self._collHPSS = self._collStageFromHPSS
+        self._collXRD  = self._collsStageToStageTarget[stageTarget]
+
+        # -- Clean up staged
+        # --------------------------------------------
 
         # - rm staged HPSS
-        self._collStageFromHPSS.delete_many({'stageStatus': 'staged'})
+        self._collHPSS.delete_many({'stageStatus': 'staged'})
 
         # - rm staged XRD
-        collXRD.delete_many({'stageStatusTarget': 'staged'})
+        self._collXRD.delete_many({'stageStatusTarget': 'staged'})
+
+        # -- Check that no are none unstaged and no staging or failed are left
+        # --------------------------------------------
+        if self._checkUnstaged():
+            return
+
+        # -- Check that none are failed
+        #self._checkFailed()
+
+        # -- Check what to do with files in staging
+        self._checkStaging()
+
+        # -- check again if some files have been reset
+        if self._checkUnstaged():
+            return
+
+        # -- Check for the crawler to be finished and outcome has been processed
+        # --------------------------------------------
 
         # -- XRD Crawler hasn't finshed everywhere
         if self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count() > 0:
@@ -837,15 +925,8 @@ class stagerSDMS:
         if self._collsStageTargetNew[target][stageTarget].find().count() > 0 or self._collsStageTargetMiss[target][stageTarget].find().count() > 0:
             return
 
-        # -- HPSS nothing left to stage
-        if self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).count() > 0:
-            return
-
-        # -- XRD nothing left to stage
-        if collXRD.find({'stageStatusTarget': 'unstaged'}).count() > 0:
-            return
-
         # -- End of cycle
+        # --------------------------------------------
 
         # - end of staging cycle
         self._dbUtil.unsetProcessLock("staging_cycle_active")
@@ -857,6 +938,12 @@ class stagerSDMS:
 
         # -- Print staging stats
         self.printStagingStats()
+
+        # -- Remove empty folders on scratch
+        self._rmEmptyFoldersOnScratch()
+
+        # -- Kill zombie xrdcp processes
+        self.killZombieXRDCP()
 
 # ____________________________________________________________________________
 def main():
@@ -876,6 +963,7 @@ def main():
     # -- Stage files from HPSS
     stager.stageFromHPSS()
 
+    # -- Clean dummy staged files
     stager.cleanDummyStagedFiles()
 
     # -- Stage from staging area to staging location

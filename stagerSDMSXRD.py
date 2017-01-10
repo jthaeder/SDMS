@@ -52,6 +52,9 @@ def main():
     # -- Stage from staging area to staging location
     stager.stageToXRD()
 
+    # -- Kill zombie xrdcp processes
+    stager.killZombieXRDCP()
+
     dbUtil.close()
 # ____________________________________________________________________________
 if __name__ == "__main__":
