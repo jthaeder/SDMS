@@ -861,12 +861,12 @@ class stagerSDMS:
         # -- Set all files from HPSS - still in staging state after 8 hours back to unstaged
         nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=8)).strftime('%Y-%m-%d-%H-%M')
         self._collHPSS.update_many({'stageStatusTarget': 'staging', 'timeStamp': {"$lt": nHoursAgo}},
-                                   {'$set': {'stageStatus': 'unstaged'}):
+                                   {'$set': {'stageStatus': 'unstaged'}})
 
         # -- Set all files to XRD - still in staging state after 4 hours back to unstaged
         nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=4)).strftime('%Y-%m-%d-%H-%M')
         self._collXRD.update_many({'stageStatusTarget': 'staging', 'timeStamp': {"$lt": nHoursAgo}},
-                                  {'$set': {'stageStatusTarget': 'xxx'}):
+                                  {'$set': {'stageStatusTarget': 'xxx'}})
 
     # ____________________________________________________________________________
     def killZombieXRDCP(self):
