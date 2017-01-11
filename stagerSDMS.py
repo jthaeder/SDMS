@@ -786,7 +786,7 @@ class stagerSDMS:
 
         collXRD = self._collsStageToStageTarget[stageTarget]
 
-        if collXRD.name, collXRD.find().count() > 0:
+        if collXRD.find().count() > 0:
             print(" All Docs in {}: {}".format(collXRD.name, collXRD.find().count()))
             print("   Unstaged   : {}".format(collXRD.find({'stageStatusTarget': 'unstaged'}).count()))
             print("   Unstaged   : {} but staged already from HPSS".format(collXRD.find({'stageStatusTarget': 'unstaged', 'stageStatusHPSS': 'staged'}).count()))
