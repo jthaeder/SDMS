@@ -839,14 +839,19 @@ class stagerSDMS:
         for doc in self._collXRD.find({'stageStatusTarget': 'failed'}):
 
             # -- If files have been rested more the 10 times, set them to investigate
-            resetFailed = doc['resetFailed']
+            resetFailed = 0
+            try:
+                resetFailed = doc['resetFailed']
+            except:
+                pass
+
             if resetFailed > 10:
                 self._collXRD.update_one({'_id': doc['_id']},
                                          {'$set': {'stageStatusTarget': 'investigate'}})
 
             # -- Get other errors than no space left on device
             otherError = []
-            for key, value in doc:
+            for key, value in doc.items():
                 if "ErrorCode" in key and key != "ErrorCode_NoSpaceLeftOnDevice":
                     otherError.append(key)
 
