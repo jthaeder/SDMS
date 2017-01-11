@@ -53,6 +53,7 @@ class crawlerXRD:
     def __init__(self, dbUtil):
         self._now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')
         self._nodeName = socket.getfqdn().split('.')[0]
+        self._crawlerWasRun = False
 
         # -- possible targets
         self._listOfTargets = ['picoDst', 'picoDstJet', 'aschmah']
@@ -182,6 +183,8 @@ class crawlerXRD:
         if listOfFilesOnNode:
             self._insertMissingFilePaths(listOfFilesOnNode, target)
 
+        self._crawlerWasRun = True
+
     # _________________________________________________________
     def _insertMissingFilePaths(self, filePathList, target):
         """insert list of filePaths to missing collection"""
@@ -226,12 +229,17 @@ class crawlerXRD:
                'stateActive': False,
                'lastSeenActive': '2000-01-01-01-01',}
 
+        if self._crawlerWasRun:
+            newFilesStaged = False
+        else:
+            newFilesStaged = True
+
         self._collDataServer.find_one_and_update({'nodeName': doc['nodeName']},
                                                  {'$set': {'freeSpace': free,
                                                            'usedSpace': used,
                                                            'totalSpace': total,
                                                            'fillLevel': fillLevel,
-                                                           'newFilesStaged': False,
+                                                           'newFilesStaged': newFilesStaged,
                                                            'lastCrawlerRun': self._now},
                                                   '$setOnInsert' : doc}, upsert = True)
 
