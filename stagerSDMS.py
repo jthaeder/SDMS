@@ -14,6 +14,7 @@ import sys
 import os
 import re
 import json
+import psutil
 
 import logging as log
 import time
@@ -891,8 +892,7 @@ class stagerSDMS:
 
             for proc in psutil.process_iter():
                 if proc.name() == xrdcpCmd:
-                    print("Kill ", proc.name())
-                    #proc.kill()
+                    proc.kill()
 
     # ____________________________________________________________________________
     def checkForEndOfStagingCycle(self):
