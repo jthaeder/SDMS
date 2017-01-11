@@ -914,7 +914,7 @@ class stagerSDMS:
             return
 
         # -- Check that none are failed
-        #self._checkFailed()
+        self._checkFailed()
 
         # -- Check what to do with files in staging
         self._checkStaging()
