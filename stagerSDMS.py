@@ -852,12 +852,24 @@ class stagerSDMS:
 
             # -- Get other errors than no space left on device
             otherError = []
+            hasNoSpace = False
+            hasNoFile = False
             for key, value in doc.items():
-                if "ErrorCode" in key and key != "ErrorCode_NoSpaceLeftOnDevice":
-                    otherError.append(key)
+                if "ErrorCode" in key:
+                    if "NoSpaceLeftOnDevice" in key
+                        hasNoSpace = True
+                    elif "NoSuchFileOrDirectory" in key:
+                        hasNoFile = True
+                    else:
+                        otherError.append(key)
+
+            # -- If file is gone from staging area (why so ever) delete entry
+            if hasNoFile:
+                self._collXRD.delete_one({'_id': doc['_id']})
+                continue
 
             # -- If all errors are no space left on device, reset to unstaged and increase resetFailed count
-            if (len(otherError) == 0):
+            if hasNoSpace and len(otherError) == 0:
                 self._collXRD.update_one({'_id': doc['_id']},
                                          {'$set': {'stageStatusTarget': 'unstaged'},
                                           '$inc': {'resetFailed': 1}})
@@ -892,7 +904,10 @@ class stagerSDMS:
 
             for proc in psutil.process_iter():
                 if proc.name() == xrdcpCmd:
-                    proc.kill()
+                    try:
+                        proc.kill()
+                    except:
+                        pass
 
     # ____________________________________________________________________________
     def checkForEndOfStagingCycle(self):
