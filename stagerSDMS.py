@@ -359,13 +359,15 @@ class stagerSDMS:
                                                          '$setOnInsert' : stageDocFromHPSS}, upsert = True)
 
             # -- Get Update doc in collStageToStagingTarget
+            emptyList = []
             stageDocToTarget = {
                 'filePath':     currentPath,
                 'fileFullPath': hpssDoc['fileFullPath'],
                 'fileSize':     hpssDoc['fileSize'],
                 'target':       hpssDoc['target'],
                 'stageStatusHPSS': 'unstaged',
-                'stageStatusTarget': 'unstaged'}
+                'stageStatusTarget': 'unstaged',
+                'note': emptyList}
 
             # -- Basic set of stage targets if no document exists
             if self._nCopies == 1:
@@ -670,25 +672,22 @@ class stagerSDMS:
                             elif "no space left on device" in text:
                                 xrdCode = "NoSpaceLeftOnDevice"
                                 break
+                            elif "No such file or directory" in text:
+                                xrdCode = "NoSuchFileOrDirectory"
+                                break
 
                         # -- File exits - not seeas as error
                         if xrdCode == 'FileExistsAlready':
                             isStagingSucessful = True
                             break
 
-                        print("   Error XRD Staging: ({0}) {1}\n     {2}".format(err.returncode, xrdCode, err.cmd))
+                        # -- Update entry
                         errorType = 'ErrorCode_{0}'.format(xrdCode)
+                        note = err.output.decode("utf-8").rstrip()
                         collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
-                                                    {'$inc': {errorType: 1}, '$set': {'trials': trial}})
-
-                        if xrdCode == 'Unknown':
-                            note = err.output.decode("utf-8").rstrip()
-                            collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']}, {'$set': {'note': note}})
-                            print(note)
-                        else:
-                            note = err.output.decode("utf-8").rstrip()
-                            print(note)
-
+                                                    {'$inc': {errorType: 1},
+                                                     '$set': {'trials': trial},
+                                                     '$push': {'note': note}})
                         continue
 
                     # -- Except timeout
@@ -696,22 +695,24 @@ class stagerSDMS:
                         isStagingSucessful = False
                         xrdCode = 'TimeOut'
 
-                        print("   Error XRD Staging: ({0}) {1}\n     {2}".format(err.timeout, xrdCode, err.cmd))
-
                         errorType = 'ErrorCode_{0}'.format(xrdCode)
+                        note = "Time out after {0}s".format(self._stageXRD['timeOut'])
                         collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
-                                                    {'$inc': {errorType: 1}, '$set': {'trials': trial}})
+                                                    {'$inc': {errorType: 1},
+                                                     '$set': {'trials': trial},
+                                                     '$push': {'note': note}})
                         continue
 
                     except:
                         isStagingSucessful = False
                         xrdCode = 'OtherError'
 
-                        print("   Error XRD Staging: ({0}) {1}\n     {2}".format(xrdCode, xrdCode, xrdcpCmd))
-
                         errorType = 'ErrorCode_{0}'.format(xrdCode)
+                        note = "Other error"
                         collXRD.find_one_and_update({'fileFullPath': stageDoc['fileFullPath']},
-                                                    {'$inc': {errorType: 1}, '$set': {'trials': trial}})
+                                                    {'$inc': {errorType: 1},
+                                                     '$set': {'trials': trial},
+                                                     '$push': {'note': note}})
                         continue
 
                     # -- XRD staging successful
@@ -785,25 +786,32 @@ class stagerSDMS:
 
         collXRD = self._collsStageToStageTarget[stageTarget]
 
-        print(" All Docs in {}: {}".format(collXRD.name, collXRD.find().count()))
-        print("   Unstaged   : {}".format(collXRD.find({'stageStatusTarget': 'unstaged'}).count()))
-        print("   Unstaged   : {} but staged already from HPSS".format(collXRD.find({'stageStatusTarget': 'unstaged', 'stageStatusHPSS': 'staged'}).count()))
-        print("   Staged     : {}".format(collXRD.find({'stageStatusTarget': 'staged'}).count()))
-        print("   Dummy      : {}".format(collXRD.find({'stageStatusHPSS': 'staged', 'stageDummy': True}).count()))
-        print("   Failed     : {}".format(collXRD.find({'stageStatusTarget': 'failed'}).count()))
-        print("   Investigate: {}".format(collXRD.find({'stageStatusTarget': 'investigate'}).count()))
-        print("   Staging    : {}".format(collXRD.find({'stageStatusTarget': 'staging'}).count()))
-        print(" ")
-        print(" All Docs in {}: {}".format(self._collStageFromHPSS.name, self._collStageFromHPSS.find().count()))
-        print("   Unstaged: {}".format(self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).count()))
-        print("   Staged  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'staged'}).count()))
-        print("   Staging : {}".format(self._collStageFromHPSS.find({'stageStatus': 'staging'}).count()))
-        print("   Failed  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'failed'}).count()))
-        print(" ")
-        print(" Number of dataserver with new files staged: {} (no new XRD Crawler Run)".format(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()))
-        print(" Unprocessed new files on data server:       {}".format(self._collsStageTargetNew[target][stageTarget].find().count()))
-        print(" Unprocessed missing files on data server:   {}".format(self._collsStageTargetMiss[target][stageTarget].find().count()))
-        print(" ")
+        if collXRD.name, collXRD.find().count() > 0:
+            print(" All Docs in {}: {}".format(collXRD.name, collXRD.find().count()))
+            print("   Unstaged   : {}".format(collXRD.find({'stageStatusTarget': 'unstaged'}).count()))
+            print("   Unstaged   : {} but staged already from HPSS".format(collXRD.find({'stageStatusTarget': 'unstaged', 'stageStatusHPSS': 'staged'}).count()))
+            print("   Staged     : {}".format(collXRD.find({'stageStatusTarget': 'staged'}).count()))
+            print("   Dummy      : {}".format(collXRD.find({'stageStatusHPSS': 'staged', 'stageDummy': True}).count()))
+            print("   Failed     : {}".format(collXRD.find({'stageStatusTarget': 'failed'}).count()))
+            print("   Investigate: {}".format(collXRD.find({'stageStatusTarget': 'investigate'}).count()))
+            print("   Staging    : {}".format(collXRD.find({'stageStatusTarget': 'staging'}).count()))
+            print(" ")
+        if self._collStageFromHPSS.find().count() > 0:
+            print(" All Docs in {}: {}".format(self._collStageFromHPSS.name, self._collStageFromHPSS.find().count()))
+            print("   Unstaged: {}".format(self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).count()))
+            print("   Staged  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'staged'}).count()))
+            print("   Staging : {}".format(self._collStageFromHPSS.find({'stageStatus': 'staging'}).count()))
+            print("   Failed  : {}".format(self._collStageFromHPSS.find({'stageStatus': 'failed'}).count()))
+            print(" ")
+        if self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count() > 0:
+            print(" Number of dataserver with new files staged: {} (no new XRD Crawler Run)".format(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()))
+            print(" ")
+        if self._collsStageTargetNew[target][stageTarget].find().count() > 0:
+            print(" Unprocessed new files on data server:       {}".format(self._collsStageTargetNew[target][stageTarget].find().count()))
+            print(" ")
+        if self._collsStageTargetMiss[target][stageTarget].find().count() > 0:
+            print(" Unprocessed missing files on data server:   {}".format(self._collsStageTargetMiss[target][stageTarget].find().count()))
+            print(" ")
         print(" Free space on scratch disk: {} GB".format(self._getFreeSpaceOnScratchDisk()))
         print(" Used space in staging area: {} GB".format(self._getUsedSpaceOnStagingArea()))
         print(" ")
@@ -866,7 +874,8 @@ class stagerSDMS:
         # -- Set all files to XRD - still in staging state after 4 hours back to unstaged
         nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=4)).strftime('%Y-%m-%d-%H-%M')
         self._collXRD.update_many({'stageStatusTarget': 'staging', 'timeStamp': {"$lt": nHoursAgo}},
-                                  {'$set': {'stageStatusTarget': 'xxx'}})
+                                  {'$set': {'stageStatusTarget': 'unstaged'},
+                                   '$inc': {'resetFailed': 1}})
 
     # ____________________________________________________________________________
     def killZombieXRDCP(self):
