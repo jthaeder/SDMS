@@ -856,7 +856,7 @@ class stagerSDMS:
             hasNoFile = False
             for key, value in doc.items():
                 if "ErrorCode" in key:
-                    if "NoSpaceLeftOnDevice" in key
+                    if "NoSpaceLeftOnDevice" in key:
                         hasNoSpace = True
                     elif "NoSuchFileOrDirectory" in key:
                         hasNoFile = True
