@@ -262,6 +262,9 @@ class stagerSDMS:
         # -- Check if query items are correct
         for key, value in stageSet.items():
             if "starDetails." in key:
+                if key[12:] not in self._listOfQueryItems:
+                    print('Error reading staging file: Query item does not exist:', key, value)
+                    return False
                 continue
             if key not in self._listOfQueryItems:
                 print('Error reading staging file: Query item does not exist:', key, value)
