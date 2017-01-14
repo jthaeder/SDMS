@@ -214,13 +214,18 @@ class crawlerXRD:
         used=0
         free=0
 
+        spaceDict = {}
+
         for diskPath in mountSet:
             if os.path.isdir(diskPath):
                 usage = shutil.disk_usage(diskPath)
-
                 used += usage.used
                 total += usage.total
                 free += usage.free
+
+                spaceDict[diskPath]['used'] = usage.used
+                spaceDict[diskPath]['total'] = usage.total
+                spaceDict[diskPath]['free'] = usage.free
 
         fillLevel = used/float(total)*100
 
@@ -238,6 +243,7 @@ class crawlerXRD:
                                                  {'$set': {'freeSpace': free,
                                                            'usedSpace': used,
                                                            'totalSpace': total,
+                                                           'disks': spaceDict,
                                                            'fillLevel': fillLevel,
                                                            'newFilesStaged': newFilesStaged,
                                                            'lastCrawlerRun': self._now},
