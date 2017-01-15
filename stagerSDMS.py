@@ -313,17 +313,20 @@ class stagerSDMS:
                 docsSetHPSS = set([item['filePath'] for item in hpssDocs])
 
                 # -- Get all files on stageing Target
+                query = 'storage.details.{}'.format(self._nCopies - 1)
                 stagedDocsX = list(self._collsStageTarget[target][stageTarget].find({'storage.location': stageTarget,
                                                                                 'target': target,
-                                                                                'nCopies' : {"$gte": self._nCopies}}))
+                                                                                query : {"$exists": true}}))                                                
+
                 docsSetStagedX = set([item['filePath'] for item in stagedDocsX])
+                print("all staged with > nCopies 2", len(docsSetStagedX))
 
                 stagedDocs = list(self._collsStageTarget[target][stageTarget].find({'storage.location': stageTarget,
                                                                                 'target': target}))
                 docsSetStaged = set([item['filePath'] for item in stagedDocs])
                 print("all staged", len(docsSetStaged))
-                print("all staged with > nCopies 2", len(docsSetStagedX))
-                docsSetStagedXX = set([item['filePath'] for item in stagedDocs if item['nCopies'] >= self._nCopies])
+
+                docsSetStagedXX = set([item['filePath'] for item in stagedDocs if len(item['storage']['details']) >= self._nCopies])
                 print("all staged with > nCopies 2", len(docsSetStagedXX))
 
                 # -- Document to be staged
