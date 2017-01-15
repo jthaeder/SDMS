@@ -818,6 +818,7 @@ class stagerSDMS:
             print(" ")
         if self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count() > 0:
             print(" Number of dataserver with new files staged: {} (no new XRD Crawler Run)".format(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()))
+            print(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}))
             print(" ")
         if self._collsStageTargetNew[target][stageTarget].find().count() > 0:
             print(" Unprocessed new files on data server:       {}".format(self._collsStageTargetNew[target][stageTarget].find().count()))
@@ -1002,7 +1003,7 @@ def main():
     stager.cleanDummyStagedFiles()
 
     # -- Stage files from HPSS
-    stager.stageFromHPSS()
+#    stager.stageFromHPSS()
 
     # -- Clean dummy staged files
     stager.cleanDummyStagedFiles()
