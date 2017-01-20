@@ -313,21 +313,12 @@ class stagerSDMS:
                 docsSetHPSS = set([item['filePath'] for item in hpssDocs])
 
                 # -- Get all files on stageing Target
-                query = 'storage.details.{}'.format(self._nCopies - 1)
-                stagedDocsX = list(self._collsStageTarget[target][stageTarget].find({'storage.location': stageTarget,
-                                                                                'target': target,
-                                                                                query : {"$exists": true}}))                                                
-
-                docsSetStagedX = set([item['filePath'] for item in stagedDocsX])
-                print("all staged with > nCopies 2", len(docsSetStagedX))
-
+                queryNCopies = 'storage.details.{}'.format(self._nCopies - 1)
                 stagedDocs = list(self._collsStageTarget[target][stageTarget].find({'storage.location': stageTarget,
-                                                                                'target': target}))
-                docsSetStaged = set([item['filePath'] for item in stagedDocs])
-                print("all staged", len(docsSetStaged))
+                                                                                    'target': target,
+                                                                                    queryNCopies: {"$exists": True}}))
 
-                docsSetStagedXX = set([item['filePath'] for item in stagedDocs if len(item['storage']['details']) >= self._nCopies])
-                print("all staged with > nCopies 2", len(docsSetStagedXX))
+                docsSetStaged = set([item['filePath'] for item in stagedDocs])
 
                 # -- Document to be staged
                 docsToStage = docsSetHPSS - docsSetStaged
@@ -381,7 +372,7 @@ class stagerSDMS:
                 'fileFullPath': hpssDoc['fileFullPath'],
                 'fileSize':     hpssDoc['fileSize'],
                 'target':       hpssDoc['target'],
-                'stageStatusHPSS': 'unstaged',
+                'stageStatusHPSS':  'unstaged',
                 'stageStatusTarget': 'unstaged',
                 'note': emptyList}
 
@@ -404,7 +395,7 @@ class stagerSDMS:
                         stageTargetList.append('MENDEL_2')
 
                 if len(stageTargetList) > 0:
-                    stageDocToTarget[stageTargetList] = stageTargetList
+                    stageDocToTarget['stageTargetList'] = stageTargetList
 
             # -- Insert new doc in collStageToStagingTarget
             try:
@@ -474,7 +465,7 @@ class stagerSDMS:
 
         if lock:
             return
-
+        
         listOfFilesToStage = []
 
         ## -- Decide on to stage file or subFile
@@ -821,7 +812,8 @@ class stagerSDMS:
             print(" ")
         if self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count() > 0:
             print(" Number of dataserver with new files staged: {} (no new XRD Crawler Run)".format(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}).count()))
-            print(self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True}))
+            dataServerList = [d['nodeName'] for d in self._collServerXRD.find({'isDataServerXRD': True, 'newFilesStaged': True})]
+            print("      List :", dataServerList)
             print(" ")
         if self._collsStageTargetNew[target][stageTarget].find().count() > 0:
             print(" Unprocessed new files on data server:       {}".format(self._collsStageTargetNew[target][stageTarget].find().count()))
@@ -1006,7 +998,7 @@ def main():
     stager.cleanDummyStagedFiles()
 
     # -- Stage files from HPSS
-#    stager.stageFromHPSS()
+    stager.stageFromHPSS()
 
     # -- Clean dummy staged files
     stager.cleanDummyStagedFiles()
