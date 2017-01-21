@@ -115,6 +115,7 @@ class crawlerXRD:
             # -- Add files to DB as missing - if there are some
             if listOfFilesOnNode:
                 self._insertMissingFilePaths(listOfFilesOnNode, target)
+            self._crawlerWasRun = True
             return
 
         # -- Get working directoty
@@ -125,6 +126,7 @@ class crawlerXRD:
             # -- Add missing files to DB - if there are some
             if listOfFilesOnNode:
                 self._insertMissingFilePaths(listOfFilesOnNode, target)
+            self._crawlerWasRun = True
             return
 
         # -- Get list folders to walk on
@@ -214,18 +216,19 @@ class crawlerXRD:
         used=0
         free=0
 
-        spaceDict = {}
-
+        disks = {}
         for diskPath in mountSet:
+            disk = diskPath.split('/')[-1]
+            disks[disk] = {}
             if os.path.isdir(diskPath):
                 usage = shutil.disk_usage(diskPath)
                 used += usage.used
                 total += usage.total
                 free += usage.free
 
-                spaceDict[diskPath]['used'] = usage.used
-                spaceDict[diskPath]['total'] = usage.total
-                spaceDict[diskPath]['free'] = usage.free
+                disks[disk]['used'] = usage.used
+                disks[disk]['total'] = usage.total
+                disks[disk]['free'] = usage.free
 
         fillLevel = used/float(total)*100
 
@@ -243,7 +246,7 @@ class crawlerXRD:
                                                  {'$set': {'freeSpace': free,
                                                            'usedSpace': used,
                                                            'totalSpace': total,
-                                                           'disks': spaceDict,
+                                                           'disks': disks,
                                                            'fillLevel': fillLevel,
                                                            'newFilesStaged': newFilesStaged,
                                                            'lastCrawlerRun': self._now},
