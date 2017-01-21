@@ -470,6 +470,11 @@ class stagerSDMS:
 
         ## -- Decide on to stage file or subFile
         while True:
+
+            # -- Check if there is enough space on disk
+            if not self._checkScratchSpaceStatus():
+                break
+
             now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')
 
             # - Get next unstaged document and set status to staging
@@ -477,10 +482,6 @@ class stagerSDMS:
                                                                    {'$set':{'stageStatus': 'staging',
                                                                     'timeStamp': now}}, sort=[('orderIdx', pymongo.ASCENDING)])
             if not stageDoc:
-                break
-
-            # -- Check if there is enough space on disk
-            if not self._checkScratchSpaceStatus():
                 break
 
             # -- Use hsi to extract one file only
