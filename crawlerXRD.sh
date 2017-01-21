@@ -39,4 +39,5 @@ pushd ~starxrd/SDMS > /dev/null
 
 python crawlerXRD.py
 
-popd > /dev/null
+# Commented out popd so that this script could be called remotely via xdsh
+#popd > /dev/null
