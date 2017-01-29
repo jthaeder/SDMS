@@ -37,6 +37,7 @@ from pprint import pprint
 
 SCRATCH_SPACE = "/global/projecta/projectdirs/starprod/stageArea"
 SCRATCH_LIMIT = 10*1024 # in GB
+SCRATCH_FREE_MIN = 1024 # in GB
 
 HPSS_TAPE_ORDER_SCRIPT = "/usr/common/usg/bin/hpss_file_sorter.script"
 HPSS_SPLIT_MAX = 10
@@ -60,6 +61,7 @@ class stagerSDMS:
 
         self._scratchSpace = SCRATCH_SPACE
         self._scratchLimit = SCRATCH_LIMIT
+        self._scratchFreeMin = SCRATCH_FREE_MIN
 
         self._dbUtil = dbUtil
 
@@ -458,7 +460,7 @@ class stagerSDMS:
         """
 
         lock = True
-        for stageGroup in sorted(self._collStageFromHPSS.distinct('stageGroup')):
+        for stageGroup in sorted(self._collStageFromHPSS.find({'stageStatus': 'unstaged'}).distinct('stageGroup')):
             if not self._dbUtil.checkSetProcessLock("stagingHPSS_{}".format(stageGroup)):
                  lock = False
                  break
@@ -508,21 +510,22 @@ class stagerSDMS:
            Returs true if still enough space to stage more from HPSS
         """
 
-        if not self._scratchSpaceFlag:
-            return False
+        scratchSpaceFlag = True
 
         freeSpace = self._getFreeSpaceOnScratchDisk()
         usedSpace = self._getUsedSpaceOnStagingArea()
 
         # -- Check that freespace is larger 1 TB, otherwise set flag to false
-        if freeSpace < 1024:
-            self._scratchSpaceFlag = False
+        if freeSpace < self._scratchFreeMin:
+            scratchSpaceFlag = False
 
         # -- Check that not more than the limit is used
         if usedSpace > self._scratchLimit:
-            self._scratchSpaceFlag = False
+            scratchSpaceFlag = False
 
-        return True
+        self._scratchSpaceFlag = scratchSpaceFlag
+
+        return self._scratchSpaceFlag
 
     # ____________________________________________________________________________
     def _getFreeSpaceOnScratchDisk(self):
@@ -842,7 +845,7 @@ class stagerSDMS:
         return False
 
     # ____________________________________________________________________________
-    def _checkFailed(self):
+    def _checkFailedXRD(self):
         """Check if some failed files are left"""
 
         # -- Loop over all failed Target files
@@ -893,13 +896,14 @@ class stagerSDMS:
            set them back to unstaged in case of too long in staging
         """
 
-        # -- Set all files from HPSS - still in staging state after 8 hours back to unstaged
-        nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=8)).strftime('%Y-%m-%d-%H-%M')
-        self._collHPSS.update_many({'stageStatusTarget': 'staging', 'timeStamp': {"$lt": nHoursAgo}},
-                                   {'$set': {'stageStatus': 'unstaged'}})
+        # -- Set all files from HPSS - still in staging state after 18 hours back to unstaged
+        nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=18)).strftime('%Y-%m-%d-%H-%M')
+        self._collHPSS.update_many({'stageStatus': 'staging', 'timeStamp': {"$lt": nHoursAgo}},
+                                   {'$set': {'stageStatus': 'unstaged'},
+                                    '$inc': {'resetFailed': 1}})
 
-        # -- Set all files to XRD - still in staging state after 4 hours back to unstaged
-        nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=4)).strftime('%Y-%m-%d-%H-%M')
+        # -- Set all files to XRD - still in staging state after 1 hours back to unstaged
+        nHoursAgo = (datetime.datetime.now() - datetime.timedelta(hours=1)).strftime('%Y-%m-%d-%H-%M')
         self._collXRD.update_many({'stageStatusTarget': 'staging', 'timeStamp': {"$lt": nHoursAgo}},
                                   {'$set': {'stageStatusTarget': 'unstaged'},
                                    '$inc': {'resetFailed': 1}})
@@ -943,7 +947,8 @@ class stagerSDMS:
             return
 
         # -- Check that none are failed
-        self._checkFailed()
+        self._checkFailedXRD()
+#        self._checkFailedHPSS()
 
         # -- Check what to do with files in staging
         self._checkStaging()
