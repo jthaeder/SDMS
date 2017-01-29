@@ -467,7 +467,7 @@ class stagerSDMS:
 
         if lock:
             return
-        
+
         listOfFilesToStage = []
 
         ## -- Decide on to stage file or subFile
@@ -630,6 +630,77 @@ class stagerSDMS:
         stageStatus = 'staged' if isExctractSucessful else 'failed'
         self._collStageFromHPSS.find_one_and_update({'fileFullPath': fileFullPath},
                                                     {'$set' : {'stageStatus': stageStatus}})
+
+    # ____________________________________________________________________________
+    def checkFailedFilesFromHPSSStaging(self):
+        """Check if some files have been staged already before staging failed"""
+
+        stageTarget = "XRD"
+        collXRD = self._collsStageToStageTarget[stageTarget]
+
+        ## -- Get all failed files
+        while True:
+
+            now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M')
+
+            # - Get next unstaged document and set status to staging
+            stageDoc = self._collStageFromHPSS.find_one_and_update({'stageStatus': 'failed',
+                                                                   {'$set':{'stageStatus': 'checking',
+                                                                    'timeStamp': now}}, sort=[('orderIdx', pymongo.ASCENDING)])
+            if not stageDoc:
+                break
+
+            for targetFile in stageDoc['listOfFiles']:
+
+                # -- Get file to be staged
+                xrdDoc = collXRD.find_one({'fileFullPath': targetFile})
+
+                # -- if file exists -
+                if os.path.isfile(os.path.join(self._scratchSpace, targetFile)):
+
+                    # -- File is not to be staged ... remove it from disk
+                    if not xrdDoc:
+                        os.path.rm(os.path.join(self._scratchSpace, targetFile))
+
+                    # -- Compare fileSize on disk and in collXRD
+                    #    Check if full file had been extracted
+
+                    # -- if fileSize is OK - set to staged
+                    if self._checkFileSizeOfStagedFile(targetFile, xrdDoc):
+                        collXRD.find_one_and_update({'fileFullPath': targetFile},
+                                {'$set': {'stageStatusHPSS': 'staged'})
+
+                    # -- Otherwise remove file from disk and remove entry in collXRD
+                    else:
+                        os.path.rm(os.path.join(self._scratchSpace, targetFile))
+                        collXRD.delete_one({'_id': xrdDoc['_id']})
+
+                # -- File is not on disk:
+                #      Remove it from collXRD if present
+                #      Otherwise do nothing
+                else
+                    if xrdDoc:
+                        collXRD.delete_one({'_id': xrdDoc['_id']})
+
+            # -- Remove failed entry in HPSS coll
+            self._collStageFromHPSS.delete_one({'_id': stageDoc['_id']})
+
+    # ____________________________________________________________________________
+    def _checkFileSizeOfStagedFile(self, doc):
+        """Check fileSize of staged file."""
+
+        if not doc:
+            return False
+
+        try:
+            fstat = os.stat(os.path.join(self._scratchSpace, doc['fileFullPath']))
+        except:
+            return False
+
+        if doc['fileSize'] == fstat.st_size:
+            return True
+        else:
+            return False
 
     # ____________________________________________________________________________
     def stageToXRD(self):
